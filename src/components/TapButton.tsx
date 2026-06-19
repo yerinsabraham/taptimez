@@ -27,24 +27,26 @@ export default function TapButton({
   size,
   ariaLabel,
 }: TapButtonProps) {
-  const style: CSSProperties | undefined = size
+  // size sets the housing diameter; the dome fills the rim-padded interior.
+  const housingStyle: CSSProperties | undefined = size
     ? { width: size, height: size }
     : undefined
 
   const decorative = !onPress
 
   return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={disabled}
-      aria-hidden={decorative || undefined}
-      tabIndex={decorative ? -1 : undefined}
-      aria-label={ariaLabel ?? (typeof label === 'string' ? label : 'Tap')}
-      style={style}
-      className={`tap-button${pulsing ? ' tap-button--pulse' : ''}`}
-    >
-      {label != null && <span className="tap-button__label">{label}</span>}
-    </button>
+    <div className="tap-buzzer" style={housingStyle}>
+      <button
+        type="button"
+        onClick={onPress}
+        disabled={disabled}
+        aria-hidden={decorative || undefined}
+        tabIndex={decorative ? -1 : undefined}
+        aria-label={ariaLabel ?? (typeof label === 'string' ? label : 'Tap')}
+        className={`tap-button${pulsing ? ' tap-button--pulse' : ''}`}
+      >
+        {label != null && <span className="tap-button__label">{label}</span>}
+      </button>
+    </div>
   )
 }
