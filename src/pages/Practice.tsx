@@ -43,8 +43,8 @@ export default function Practice({ onBack }: { onBack: () => void }) {
   }
 
   const errorMs = Math.abs(Math.round(finalRef.current) - target)
-  // Hide the live countdown while practicing blind; always reveal the final time.
-  const clockBlank = !showClock && phase !== 'result'
+  // Fully hide the live countdown while practicing blind; always reveal the final time.
+  const clockHidden = !showClock && phase !== 'result'
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-6 text-center">
@@ -67,7 +67,7 @@ export default function Practice({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      <Clock ms={displayMs} blank={clockBlank} />
+      <Clock ms={displayMs} hidden={clockHidden} />
 
       {phase !== 'result' ? (
         <>
