@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useAuth } from '../lib/auth.tsx'
 import { logOut } from '../lib/auth-actions.ts'
 import {
+  buzzTest,
   getVolume,
   isSoundEnabled,
   isVibrationEnabled,
+  isVibrationSupported,
   setSoundEnabled,
   setVibrationEnabled,
   setVolume,
@@ -19,6 +21,7 @@ export default function Profile() {
   const [soundOn, setSoundOn] = useState(isSoundEnabled)
   const [volume, setVol] = useState(getVolume)
   const [vibrateOn, setVibrateOn] = useState(isVibrationEnabled)
+  const vibrationSupported = isVibrationSupported()
   if (!profile) return null
 
   const stats = [
@@ -87,16 +90,22 @@ export default function Profile() {
           </span>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className={`flex items-center justify-between ${vibrationSupported ? '' : 'opacity-50'}`}>
           <div>
             <div className="font-semibold">Vibration</div>
-            <div className="text-xs text-white/40">Buzz on each tap (supported phones)</div>
+            <div className="text-xs text-white/40">
+              {vibrationSupported
+                ? 'Buzz on each tap'
+                : 'Not supported on this device or browser'}
+            </div>
           </div>
           <Switch
-            on={vibrateOn}
+            on={vibrateOn && vibrationSupported}
+            disabled={!vibrationSupported}
             onChange={(v) => {
               setVibrationEnabled(v)
               setVibrateOn(v)
+              if (v) buzzTest()
             }}
           />
         </div>
@@ -112,13 +121,22 @@ export default function Profile() {
   )
 }
 
-function Switch({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+function Switch({
+  on,
+  onChange,
+  disabled,
+}: {
+  on: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+}) {
   return (
     <button
       role="switch"
       aria-checked={on}
+      disabled={disabled}
       onClick={() => onChange(!on)}
-      className={`relative h-7 w-12 rounded-full transition ${on ? 'bg-emerald-500' : 'bg-white/15'}`}
+      className={`relative h-7 w-12 rounded-full transition disabled:cursor-not-allowed ${on ? 'bg-emerald-500' : 'bg-white/15'}`}
     >
       <span
         className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${on ? 'left-6' : 'left-1'}`}

@@ -231,29 +231,44 @@ export function stopTone(): void {
 
 /* ---------------- vibration ---------------- */
 
+/** True only if this browser exposes the Vibration API (Android Chrome/Firefox). */
+export function isVibrationSupported(): boolean {
+  return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'
+}
+
 function vibrate(pattern: number | number[]): void {
-  if (!isVibrationEnabled()) return
+  if (!isVibrationEnabled() || !isVibrationSupported()) return
   try {
-    navigator.vibrate?.(pattern)
+    navigator.vibrate(pattern)
   } catch {
     /* unsupported */
+  }
+}
+
+/** Fire a buzz regardless of the pref, to confirm support when toggling on. */
+export function buzzTest(): void {
+  if (!isVibrationSupported()) return
+  try {
+    navigator.vibrate(60)
+  } catch {
+    /* ignore */
   }
 }
 
 /** Sound + vibration for a START tap. */
 export function feedbackStart(): void {
   clickStart()
-  vibrate(30)
+  vibrate(40)
 }
 
 /** Sound + vibration for a STOP tap. */
 export function feedbackStop(): void {
   clickStop()
-  vibrate([25, 35, 25])
+  vibrate([30, 50, 30])
 }
 
 /** Celebration sound + vibration for a perfect score. */
 export function feedbackPerfect(): void {
   playPerfect()
-  vibrate([0, 40, 40, 40, 40, 80])
+  vibrate([40, 40, 40, 40, 80])
 }
