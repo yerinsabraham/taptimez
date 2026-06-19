@@ -9,7 +9,7 @@ import PerfectBurst from '../components/PerfectBurst.tsx'
 import { fmtTarget, isPerfect, toSec } from '../lib/game.ts'
 import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 import { recordRankedAttempt } from '../lib/attempts.ts'
-import { sendChallenge } from '../lib/challenges.ts'
+import { sendChallenge, setChallengeStatus, subscribeChallenge } from '../lib/challenges.ts'
 import { subscribeOnline, type OnlineUser } from '../lib/presence.ts'
 import {
   createRoom,
@@ -156,7 +156,7 @@ export function RoomEntry({ role, onExit }: { role: Role; onExit: () => void }) 
         ))}
       </div>
 
-      {tab === 'online' && <OnlineList meUid={user.uid} meName={name} onEnter={enter} />}
+      {tab === 'online' && <FindMatch meUid={user.uid} meName={name} onEnter={enter} />}
 
       {tab === 'create' && (
         <div className="flex flex-col items-center gap-5">
@@ -199,9 +199,13 @@ export function RoomEntry({ role, onExit }: { role: Role; onExit: () => void }) 
   )
 }
 
-/* ---------------- Online players list ---------------- */
+/* ---------------- Find a match (auto-invite an online player) ---------------- */
 
-function OnlineList({
+const FIND_TIMEOUT_MS = 15000
+
+type FindPhase = 'idle' | 'inviting' | 'noone' | 'noanswer'
+
+function FindMatch({
   meUid,
   meName,
   onEnter,
@@ -210,62 +214,136 @@ function OnlineList({
   meName: string
   onEnter: (code: string, role: Role) => void
 }) {
-  const [users, setUsers] = useState<OnlineUser[] | null>(null)
-  const [busyUid, setBusyUid] = useState<string | null>(null)
+  const [phase, setPhase] = useState<FindPhase>('idle')
+  const [opponent, setOpponent] = useState<string | null>(null)
+  const usersRef = useRef<OnlineUser[]>([])
+  const pendingRef = useRef<{
+    code: string
+    challengeId: string
+    unsub: () => void
+    timer: number
+  } | null>(null)
 
-  useEffect(() => subscribeOnline(setUsers), [])
+  // Abort the current invite: stop listening, leave the room, cancel the challenge.
+  const abort = () => {
+    const p = pendingRef.current
+    if (!p) return
+    p.unsub()
+    clearTimeout(p.timer)
+    leaveRoom(p.code, meUid).catch(() => {})
+    setChallengeStatus(p.challengeId, 'cancelled').catch(() => {})
+    pendingRef.current = null
+  }
 
-  const others = (users ?? []).filter((u) => u.uid !== meUid)
+  useEffect(() => {
+    const unsub = subscribeOnline((list) => {
+      usersRef.current = list
+    })
+    return () => {
+      unsub()
+      abort()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const challenge = async (target: OnlineUser) => {
-    setBusyUid(target.uid)
+  const invite = async () => {
+    abort()
+    setPhase('inviting')
+    const available = usersRef.current.filter((u) => u.uid !== meUid && u.status === 'online')
+    if (available.length === 0) {
+      setPhase('noone')
+      return
+    }
+    const target = available[Math.floor(Math.random() * available.length)]
+    setOpponent(target.username)
+
+    let code = ''
     try {
-      const code = await createRoom(meUid, meName, 'player', CHALLENGE_TARGET_MS)
-      await sendChallenge({
+      code = await createRoom(meUid, meName, 'player', CHALLENGE_TARGET_MS)
+      const challengeId = await sendChallenge({
         fromUid: meUid,
         fromName: meName,
         toUid: target.uid,
         toName: target.username,
         code,
       })
-      onEnter(code, 'player')
+      const entry = { code, challengeId, unsub: () => {}, timer: 0 }
+      entry.unsub = subscribeChallenge(challengeId, (c) => {
+        if (!c || pendingRef.current?.challengeId !== challengeId) return
+        if (c.status === 'accepted') {
+          entry.unsub()
+          clearTimeout(entry.timer)
+          pendingRef.current = null
+          onEnter(code, 'player') // keep the room, jump in
+        } else if (c.status === 'declined') {
+          abort()
+          setPhase('noanswer')
+        }
+      })
+      entry.timer = window.setTimeout(() => {
+        abort()
+        setPhase('noanswer')
+      }, FIND_TIMEOUT_MS)
+      pendingRef.current = entry
     } catch {
-      setBusyUid(null)
+      if (code) leaveRoom(code, meUid).catch(() => {})
+      setPhase('idle')
     }
   }
 
-  if (!users) return <Splash />
-  if (others.length === 0) {
+  const cancel = () => {
+    abort()
+    setPhase('idle')
+  }
+
+  if (phase === 'inviting') {
     return (
-      <p className="px-2 py-6 text-center text-sm text-white/40">
-        No one else is online right now. Invite a friend with a code!
-      </p>
+      <div className="flex flex-col items-center gap-5 py-8 text-center">
+        <div className="heartbeat" />
+        <p className="text-sm text-white/60">
+          Inviting <span className="font-semibold text-white/90">{opponent}</span>…
+        </p>
+        <button
+          onClick={cancel}
+          className="rounded-full border border-white/15 bg-white/5 px-6 py-2 text-sm font-semibold text-white/70 transition active:scale-95"
+        >
+          Cancel
+        </button>
+      </div>
     )
   }
 
-  return (
-    <div className="flex flex-col gap-2">
-      {others.map((u) => (
-        <div
-          key={u.uid}
-          className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+  if (phase === 'noone' || phase === 'noanswer') {
+    return (
+      <div className="flex flex-col items-center gap-4 py-8 text-center">
+        <div className="text-4xl">{phase === 'noone' ? '🌙' : '🤷'}</div>
+        <p className="max-w-xs text-sm text-white/50">
+          {phase === 'noone'
+            ? 'No one is online right now. Try again in a bit, or play with a code.'
+            : `${opponent ?? 'They'} didn't answer. Try another opponent.`}
+        </p>
+        <button
+          onClick={invite}
+          className="rounded-xl bg-indigo-500 px-8 py-3 font-bold text-white transition active:scale-[0.98]"
         >
-          <div className="flex items-center gap-2">
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${u.status === 'playing' ? 'bg-amber-400' : 'bg-emerald-400'}`}
-            />
-            <span className="font-semibold">{u.username}</span>
-            {u.status === 'playing' && <span className="text-[10px] text-amber-300/80">in game</span>}
-          </div>
-          <button
-            disabled={busyUid === u.uid || u.status === 'playing'}
-            onClick={() => challenge(u)}
-            className="rounded-full bg-indigo-500 px-4 py-1.5 text-sm font-bold text-white transition active:scale-95 disabled:opacity-40"
-          >
-            {busyUid === u.uid ? 'Waiting…' : 'Challenge'}
-          </button>
-        </div>
-      ))}
+          {phase === 'noone' ? 'Try again' : 'Find another'}
+        </button>
+      </div>
+    )
+  }
+
+  // idle
+  return (
+    <div className="flex flex-col items-center gap-4 py-8 text-center">
+      <p className="max-w-xs text-sm text-white/50">
+        We'll find someone online and invite them to a quick match.
+      </p>
+      <button
+        onClick={invite}
+        className="rounded-full bg-indigo-500 px-10 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/30 transition active:scale-95"
+      >
+        Find a match
+      </button>
     </div>
   )
 }

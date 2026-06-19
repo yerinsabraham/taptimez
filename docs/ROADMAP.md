@@ -6,6 +6,33 @@
 
 ---
 
+## Status snapshot (live)
+
+- ✅ **Phase 0 — Foundation:** Vite + React + TS, Firebase wired, deployed to `taptimez.web.app`.
+- ✅ **Phase 1 — Auth:** email/password + Google, unique usernames, profiles, security rules.
+- ✅ **Phase 2 — Core game:** the buzzer, local-measured timing, results, Practice (with
+  hide-clock toggle and a chosen target).
+- ✅ **Phase 3 — Leaderboard:** ranked by **perfect scores** (blind modes only), earliest
+  breaks ties; composite index deployed.
+- 🟡 **Phase 4 — Multiplayer (mostly done):** room codes, lobby, **Player** + **Timekeeper**
+  roles, timekeeper-started clocks, results/rematch, **online presence**, **in-app
+  challenges** with instant popup, and **"Find a match"** auto-pairing.
+- ⬜ **Phase 5 — Polish, anti-cheat, launch:** see below.
+
+**Beyond the original plan, also shipped:** physical buzzer UI + heartbeat loader,
+7-segment LED clock (DSEG7), arcade sound + volume + vibration, perfect-score celebration,
+copy-code button, friendly empty/warming states.
+
+**Top remaining work (Phase 4 tail + Phase 5):**
+- Challenge edge cases: auto-cancel a pending invite if the challenger leaves; "they
+  declined" feedback in more places.
+- Real matchmaking service (current "Find a match" reads a capped presence list client-side).
+- Push notifications (FCM) — deferred until a packaged mobile app.
+- Cloud Function score validation (anti-cheat) before perfects affect the global board.
+- Shareable result cards, spectators, sounds/haptics polish, final rules review.
+
+---
+
 ## Phase 0 — Foundation & Setup
 **Goal:** an empty-but-running React app wired to a real Firebase project.
 

@@ -1,6 +1,8 @@
 import {
+  limitToFirst,
   onDisconnect,
   onValue,
+  query,
   ref,
   remove,
   serverTimestamp,
@@ -41,7 +43,9 @@ export function goOffline(uid: string): Promise<void> {
 }
 
 export function subscribeOnline(cb: (users: OnlineUser[]) => void): Unsubscribe {
-  return onValue(ref(rtdb, 'presence'), (snap) => {
+  // Cap the download so a huge online pool doesn't pull everyone to each client.
+  // (A real matchmaking service would replace this; fine for current scale.)
+  return onValue(query(ref(rtdb, 'presence'), limitToFirst(200)), (snap) => {
     const val = snap.val() as Record<
       string,
       { username: string; status: PresenceStatus; lastActive: number }
