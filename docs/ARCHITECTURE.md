@@ -23,8 +23,8 @@ and the target, the better the score. Two modes:
 
 A global **leaderboard** ranks players by accuracy (smallest error from the target).
 
-> **Open decision (settle before Phase 2/4):** how is each round's target chosen —
-> random within a range, or set by the judge? Working default: **random per round**.
+> **Target choice:** Solo (Phase 2) uses a **random whole-second target, 3–12s**, shown
+> to the player before each round. Versus (Phase 4) will decide judge-set vs. random later.
 
 ---
 

@@ -54,12 +54,12 @@ body {
   position: relative;
   cursor: pointer;
   background: radial-gradient(
-    circle at 50% 40%,
-    #eafff1 0%,
-    #8ef0ad 20%,
-    #36d46c 46%,
-    #19a64b 72%,
-    #0c6e32 100%
+    circle at 50% 50%,
+    #f4fff8 0%,
+    #ecfff2 36%,
+    #a4f2bb 58%,
+    #36d46c 78%,
+    #11823c 100%
   );
   /* glow lives INSIDE the circle; bottom shade + top gloss give it depth */
   box-shadow:
