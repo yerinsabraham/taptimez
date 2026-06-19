@@ -4,6 +4,7 @@ import Clock from '../components/Clock.tsx'
 import EyeToggle from '../components/EyeToggle.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
 import PerfectBurst from '../components/PerfectBurst.tsx'
+import ShareButton from '../components/ShareButton.tsx'
 import { accuracyMessage, fmtTarget, isPerfect, toSec } from '../lib/game.ts'
 import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 
@@ -109,12 +110,15 @@ export default function Practice({ onBack }: { onBack: () => void }) {
               by <span className="font-semibold text-white/80">{toSec(errorMs)}s</span>
             </p>
           </div>
-          <button
-            onClick={playAgain}
-            className="rounded-full bg-indigo-500 px-10 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/30 transition active:scale-95"
-          >
-            Play again
-          </button>
+          <div className="flex w-full max-w-xs flex-col gap-2">
+            <button
+              onClick={playAgain}
+              className="rounded-full bg-indigo-500 px-10 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/30 transition active:scale-95"
+            >
+              Play again
+            </button>
+            <ShareButton targetMs={target} elapsedMs={finalRef.current} errorMs={errorMs} />
+          </div>
         </>
       )}
     </div>
