@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import TapButton from '../components/TapButton.tsx'
 import Clock from '../components/Clock.tsx'
-import { accuracyMessage, randomTargetMs, toSec } from '../lib/game.ts'
+import { accuracyMessage, toSec } from '../lib/game.ts'
 
 type Mode = 'practice' | 'player' | 'timekeeper'
 
@@ -25,17 +25,17 @@ function ModeSelect({ onPick }: { onPick: (m: Mode) => void }) {
       <div className="flex flex-col gap-3">
         <ModeCard
           title="Practice"
-          desc="Train with the clock visible — see the timer as you tap."
+          desc="Pick a target and train with the clock visible."
           onClick={() => onPick('practice')}
         />
         <ModeCard
           title="Player"
-          desc="Tap to stop with no clock; a timekeeper watches your time."
+          desc="Single or multiplayer — tap to stop with no clock."
           soon
         />
         <ModeCard
           title="Timekeeper"
-          desc="Watch the clock while players stop it."
+          desc="Host a game and watch the clock while players stop it."
           soon
         />
       </div>
@@ -80,16 +80,22 @@ function ModeCard({
 
 type Phase = 'ready' | 'running' | 'result'
 
+const MIN_TARGET = 1000
+const MAX_TARGET = 60000
+const STEP = 1000
+
 function PracticeGame({ onBack }: { onBack: () => void }) {
-  const [target, setTarget] = useState(randomTargetMs)
+  const [target, setTarget] = useState(5000) // player-chosen target
   const [phase, setPhase] = useState<Phase>('ready')
   const [displayMs, setDisplayMs] = useState(0)
   const startRef = useRef(0)
   const rafRef = useRef(0)
   const finalRef = useRef(0)
 
-  // Stop the animation loop if we leave mid-round.
   useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
+
+  const adjust = (delta: number) =>
+    setTarget((t) => Math.min(MAX_TARGET, Math.max(MIN_TARGET, t + delta)))
 
   const onPress = useCallback(() => {
     if (phase === 'ready') {
@@ -111,7 +117,6 @@ function PracticeGame({ onBack }: { onBack: () => void }) {
   }, [phase])
 
   const playAgain = () => {
-    setTarget(randomTargetMs())
     setDisplayMs(0)
     setPhase('ready')
   }
@@ -127,13 +132,27 @@ function PracticeGame({ onBack }: { onBack: () => void }) {
         ‹ Modes
       </button>
 
-      <div>
-        <p className="text-xs uppercase tracking-[0.2em] text-white/40">Target</p>
-        <p className="mt-1 text-3xl font-black tabular-nums text-indigo-300">
-          {toSec(target)}
-          <span className="text-lg text-white/40">s</span>
-        </p>
-      </div>
+      {phase === 'ready' ? (
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-white/40">Set your target</p>
+          <div className="flex items-center gap-5">
+            <StepBtn label="−" onClick={() => adjust(-STEP)} disabled={target <= MIN_TARGET} />
+            <p className="w-28 text-4xl font-black tabular-nums text-emerald-400">
+              {toSec(target)}
+              <span className="text-xl text-white/40">s</span>
+            </p>
+            <StepBtn label="+" onClick={() => adjust(STEP)} disabled={target >= MAX_TARGET} />
+          </div>
+        </div>
+      ) : (
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-white/40">Target</p>
+          <p className="mt-1 text-3xl font-black tabular-nums text-emerald-400">
+            {toSec(target)}
+            <span className="text-lg text-white/40">s</span>
+          </p>
+        </div>
+      )}
 
       <Clock ms={displayMs} />
 
@@ -142,7 +161,7 @@ function PracticeGame({ onBack }: { onBack: () => void }) {
           <TapButton label={phase === 'ready' ? 'START' : 'STOP'} onPress={onPress} />
           <p className="text-sm text-white/40">
             {phase === 'ready'
-              ? 'Tap START, then STOP at the target time.'
+              ? 'Tap START, then STOP at your target.'
               : 'Tap STOP when the clock reaches your target.'}
           </p>
         </>
@@ -165,5 +184,25 @@ function PracticeGame({ onBack }: { onBack: () => void }) {
         </>
       )}
     </div>
+  )
+}
+
+function StepBtn({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-2xl font-bold text-white transition active:scale-95 disabled:opacity-30"
+    >
+      {label}
+    </button>
   )
 }

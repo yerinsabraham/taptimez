@@ -76,21 +76,36 @@ to everyone.
 
 ---
 
-## Phase 4 — Versus Mode (Judge + Player, real-time) ⭐
-**Goal:** the two-phone, room-code multiplayer described in §6 of ARCHITECTURE.
+## Phase 4 — Player Mode: Single + Multiplayer (real-time) ⭐
+**Goal:** the room-code multiplayer described in §6 of ARCHITECTURE.
+
+**Design (from product owner):**
+- **Player** splits into **Single player** and **Multiplayer**.
+- **Single player:** like the solo skill game — no clock during play, score shown only at
+  the end.
+- **Multiplayer:** one person **creates a game** and **invites** participants:
+  - invite a **Timekeeper** + play alone, OR invite **multiple players** + a Timekeeper.
+  - **Timekeeper is required when there are multiple players** (someone must keep time).
+  - **"No timekeeper" option:** players just play and **see their scores at the end**
+    (hidden during play, like the solo result) — no live watcher.
+- **Timekeeper view:** sees the live numbers + each player's **name**, synced in real time
+  with what that player is starting/stopping. (Future: multiple players, one timekeeper.)
+- **Player view:** the buzzer only — **no clock** (the clock is the timekeeper's screen).
+- **Target:** decide create-time (host sets) vs. per-round; reuse the Practice target picker.
 
 **Tasks**
-- [ ] Room creation → generate unique code → write `rooms/{code}` to Realtime DB.
-- [ ] Join-by-code flow; assign judge/player roles; presence/connected indicators.
-- [ ] Judge view: animated timer + live status; Player view: button only.
-- [ ] Round signaling: player START/STOP writes to Realtime DB; judge screen reacts.
+- [ ] Create game → generate unique code → write `rooms/{code}` to Realtime DB.
+- [ ] Join-by-code / invite flow; roles: timekeeper + player(s); presence indicators.
+- [ ] "No timekeeper" variant (end-of-game score reveal).
+- [ ] Timekeeper view: live clock + player names/status; Player view: buzzer only.
+- [ ] Round signaling: player START/STOP writes to Realtime DB; timekeeper screen reacts.
 - [ ] Authoritative `resultMs` measured on player device → written to room + Firestore.
 - [ ] Multi-round match, win condition (lowest total error), rematch.
 - [ ] Realtime DB Security Rules: only room participants can write.
 - [ ] Room cleanup/expiry.
 
-**Done when:** two different phones on different networks join with one code and play a
-full match, with fair (locally-measured) scores shown on both screens.
+**Done when:** different phones join with one code and play a full match, with fair
+(locally-measured) scores shown correctly to players and the timekeeper.
 
 **Depends on:** Phase 2 (mechanic) + Phase 1 (identity).
 
