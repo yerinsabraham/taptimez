@@ -10,15 +10,21 @@
 
 ## 1. The Game (in one paragraph)
 
-A player must stop a hidden timer at an **exact target time** (default **6.00s**) using
-only their internal sense of time — they never see the clock while playing. Two modes:
+TapTimez is a **time-prediction** game. Each round has a **target duration that can be
+any value** — 4s, 6s, 10s, 23s — it is **not** fixed. The player never sees a clock:
+they **tap to start** and **tap to stop**, trying to land as close to the target as
+possible using only their internal sense of time. The smaller the gap between their stop
+and the target, the better the score. Two modes:
 
-- **Solo:** one phone. Tap to start, tap to stop, see how close you got to 6.00s.
+- **Solo:** one phone. Tap-start, tap-stop, see how close you landed to the round's target.
 - **Versus (Judge + Player):** two phones joined by a **room code**. The *player* sees
-  only a button; the *judge* sees the timer animate and the result. Whoever lands
-  closest to the target wins the round.
+  only a button; the *judge* sees the timer and the result. Closest to the target wins
+  the round.
 
 A global **leaderboard** ranks players by accuracy (smallest error from the target).
+
+> **Open decision (settle before Phase 2/4):** how is each round's target chosen —
+> random within a range, or set by the judge? Working default: **random per round**.
 
 ---
 
@@ -107,7 +113,7 @@ users/{uid}
 attempts/{autoId}
   uid             string
   mode            "solo" | "versus"
-  targetMs        number   (e.g. 6000)
+  targetMs        number   (the round's target duration — varies, NOT fixed)
   elapsedMs       number
   errorMs         number   (|elapsedMs - targetMs|)
   createdAt       timestamp
@@ -124,7 +130,7 @@ usernames/{usernameLowercase}   // uniqueness guard
 ```
 rooms/{code}
   status        "waiting" | "playing" | "finished"
-  targetMs      6000
+  targetMs      <varies per round>
   createdAt     <ts>
   judge:
     uid         string

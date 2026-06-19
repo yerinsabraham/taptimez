@@ -49,7 +49,7 @@ their (empty) profile, refresh the page, and still be signed in.
 - [ ] Big round START/STOP button (center screen, thumb-friendly).
 - [ ] Local measurement with `performance.now()` (no timer shown to player while running).
 - [ ] On stop: reveal `elapsedMs`, `errorMs`, and a "closeness" reaction.
-- [ ] Target time config (default 6000ms).
+- [ ] Per-round **target duration** that varies (NOT fixed) — e.g. random in a range.
 - [ ] Save each attempt to Firestore `attempts`; update `users/{uid}` best fields.
 - [ ] "Play again" loop; show your best-ever this session.
 

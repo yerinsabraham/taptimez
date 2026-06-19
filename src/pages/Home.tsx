@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
-import { firebaseConfigured } from '../lib/firebase.ts'
+import { useAuth } from '../lib/auth.tsx'
 
 export default function Home() {
+  const { profile } = useAuth()
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6 text-center">
       <div>
@@ -9,11 +11,13 @@ export default function Home() {
           TapTimez
         </h1>
         <p className="mt-3 text-white/60">
-          Stop the timer at exactly <span className="font-semibold text-indigo-400">6.00s</span>.
+          Predict the time. Tap to start, tap to stop,
           <br />
-          No clock. Just your instinct.
+          and land as close to the target as you can — no clock.
         </p>
       </div>
+
+      {profile && <p className="text-sm text-white/40">Welcome, {profile.username} 👋</p>}
 
       <Link
         to="/play"
@@ -21,10 +25,6 @@ export default function Home() {
       >
         Play
       </Link>
-
-      <p className="text-xs text-white/30">
-        {firebaseConfigured ? 'Connected to Firebase ✓' : 'Firebase not yet configured'}
-      </p>
     </div>
   )
 }
