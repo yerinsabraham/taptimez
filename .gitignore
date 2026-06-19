@@ -1,0 +1,35 @@
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# build output
+dist
+dist-ssr
+*.tsbuildinfo
+
+# local env files (SECRETS — never commit)
+.env.local
+.env.*.local
+
+# firebase
+.firebase
+firebase-debug.log
+firestore-debug.log
+database-debug.log
+ui-debug.log
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / os
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
