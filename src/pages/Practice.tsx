@@ -4,7 +4,7 @@ import Clock from '../components/Clock.tsx'
 import EyeToggle from '../components/EyeToggle.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
 import { accuracyMessage, fmtTarget, toSec } from '../lib/game.ts'
-import { clickStart, clickStop, startTone, stopTone } from '../lib/sound.ts'
+import { feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 
 type Phase = 'ready' | 'running' | 'result'
 
@@ -28,7 +28,7 @@ export default function Practice({ onBack }: { onBack: () => void }) {
 
   const onPress = useCallback(() => {
     if (phase === 'ready') {
-      clickStart()
+      feedbackStart()
       startRef.current = performance.now()
       setDisplayMs(0)
       setPhase('running')
@@ -38,7 +38,7 @@ export default function Practice({ onBack }: { onBack: () => void }) {
       }
       rafRef.current = requestAnimationFrame(tick)
     } else if (phase === 'running') {
-      clickStop()
+      feedbackStop()
       cancelAnimationFrame(rafRef.current)
       const elapsed = performance.now() - startRef.current
       finalRef.current = elapsed

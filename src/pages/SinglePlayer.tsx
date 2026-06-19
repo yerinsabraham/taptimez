@@ -5,7 +5,7 @@ import Clock from '../components/Clock.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
 import { recordSoloAttempt } from '../lib/attempts.ts'
 import { accuracyMessage, fmtTarget, toSec } from '../lib/game.ts'
-import { clickStart, clickStop, startTone, stopTone } from '../lib/sound.ts'
+import { feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 
 type Phase = 'ready' | 'running' | 'result'
 type Result = { elapsed: number; errorMs: number; isBest: boolean }
@@ -26,11 +26,11 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
 
   const onPress = useCallback(() => {
     if (phase === 'ready') {
-      clickStart()
+      feedbackStart()
       startRef.current = performance.now()
       setPhase('running')
     } else if (phase === 'running') {
-      clickStop()
+      feedbackStop()
       const elapsed = performance.now() - startRef.current
       const errorMs = Math.abs(Math.round(elapsed) - target)
       setResult({ elapsed, errorMs, isBest: false })

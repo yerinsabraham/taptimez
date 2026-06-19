@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/auth.tsx'
 import { logOut } from '../lib/auth-actions.ts'
-import { isSoundEnabled, setSoundEnabled } from '../lib/sound.ts'
+import {
+  getVolume,
+  isSoundEnabled,
+  isVibrationEnabled,
+  setSoundEnabled,
+  setVibrationEnabled,
+  setVolume,
+} from '../lib/sound.ts'
 
 function fmtMs(ms: number | null): string {
   return ms == null ? '--' : `${(ms / 1000).toFixed(3)}s`
@@ -10,6 +17,8 @@ function fmtMs(ms: number | null): string {
 export default function Profile() {
   const { user, profile } = useAuth()
   const [soundOn, setSoundOn] = useState(isSoundEnabled)
+  const [volume, setVol] = useState(getVolume)
+  const [vibrateOn, setVibrateOn] = useState(isVibrationEnabled)
   if (!profile) return null
 
   const stats = [
@@ -42,18 +51,55 @@ export default function Profile() {
         ))}
       </div>
 
-      <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-        <div>
-          <div className="font-semibold">Sound</div>
-          <div className="text-xs text-white/40">Click + tone while you play</div>
+      <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-semibold">Sound</div>
+            <div className="text-xs text-white/40">Click and tone while you play</div>
+          </div>
+          <Switch
+            on={soundOn}
+            onChange={(v) => {
+              setSoundEnabled(v)
+              setSoundOn(v)
+            }}
+          />
         </div>
-        <Switch
-          on={soundOn}
-          onChange={(v) => {
-            setSoundEnabled(v)
-            setSoundOn(v)
-          }}
-        />
+
+        <div className={`flex items-center gap-3 ${soundOn ? '' : 'opacity-40'}`}>
+          <span className="text-xs text-white/40">Volume</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={volume}
+            disabled={!soundOn}
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              setVolume(v)
+              setVol(v)
+            }}
+            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-emerald-400"
+          />
+          <span className="w-8 text-right text-xs tabular-nums text-white/40">
+            {Math.round(volume * 100)}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-semibold">Vibration</div>
+            <div className="text-xs text-white/40">Buzz on each tap (supported phones)</div>
+          </div>
+          <Switch
+            on={vibrateOn}
+            onChange={(v) => {
+              setVibrationEnabled(v)
+              setVibrateOn(v)
+            }}
+          />
+        </div>
       </div>
 
       <button
