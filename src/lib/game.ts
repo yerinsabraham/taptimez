@@ -19,6 +19,15 @@ export function toSec(ms: number): string {
   return (ms / 1000).toFixed(2)
 }
 
+/** Friendly target label: "5s" under a minute, "1:30" at/over a minute. */
+export function fmtTarget(ms: number): string {
+  const totalSec = Math.round(ms / 1000)
+  if (totalSec < 60) return `${totalSec}s`
+  const m = Math.floor(totalSec / 60)
+  const s = totalSec % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 /** A short reaction based on how far off the stop was from the target. */
 export function accuracyMessage(errorMs: number): string {
   if (errorMs <= 50) return '🎯 Perfect!'

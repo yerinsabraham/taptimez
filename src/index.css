@@ -162,15 +162,16 @@ body {
 .clock {
   font-family: 'DSEG7 Classic', ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 700;
-  font-size: clamp(2.25rem, 12vw, 3.5rem);
+  font-size: clamp(1.7rem, 9.5vw, 2.75rem);
   line-height: 1;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   color: #3ef58c;
-  padding: 0.7rem 1.4rem;
+  padding: 0.7rem 1.1rem;
   border-radius: 16px;
   background: #0a120d;
   border: 1px solid rgba(62, 245, 140, 0.25);
   position: relative;
+  white-space: nowrap;
   text-shadow: 0 0 9px rgba(62, 245, 140, 0.55);
   /* just a little outer shadow, like a real clock readout */
   box-shadow:
@@ -181,7 +182,7 @@ body {
 /* the faint "off" segments behind the lit digits, like a real LCD */
 .clock__ghost {
   position: absolute;
-  inset: 0.7rem 1.4rem;
+  inset: 0.7rem 1.1rem;
   color: rgba(62, 245, 140, 0.08);
   text-shadow: none;
   pointer-events: none;

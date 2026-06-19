@@ -4,7 +4,7 @@ import TapButton from '../components/TapButton.tsx'
 import Clock from '../components/Clock.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
 import Splash from '../components/Splash.tsx'
-import { toSec } from '../lib/game.ts'
+import { fmtTarget, toSec } from '../lib/game.ts'
 import {
   createRoom,
   endGame,
@@ -82,8 +82,16 @@ export default function Multiplayer({ role, onExit }: { role: Role; onExit: () =
     return <Results room={room} uid={user.uid} isHost={isHost} code={code} onExit={onExit} />
   }
   if (status === 'playing') {
+    const participants = room.participants ? Object.values(room.participants) : []
+    const hasTimekeeper = participants.some((p) => p.role === 'timekeeper')
     return role === 'player' ? (
-      <PlayerGame room={room} uid={user.uid} code={code} />
+      <PlayerGame
+        room={room}
+        uid={user.uid}
+        code={code}
+        offset={offset}
+        hasTimekeeper={hasTimekeeper}
+      />
     ) : (
       <TimekeeperGame room={room} code={code} offset={offset} />
     )
@@ -217,7 +225,7 @@ function Lobby({
         <p className="text-xs uppercase tracking-[0.2em] text-white/40">Game code</p>
         <p className="mt-1 text-5xl font-black tracking-[0.3em] text-emerald-400">{code}</p>
         <p className="mt-2 text-sm text-white/50">
-          Target {toSec(room.meta.targetMs)}s · share the code to invite players & a timekeeper
+          Target {fmtTarget(room.meta.targetMs)} · share the code to invite players & a timekeeper
         </p>
       </div>
 
@@ -256,31 +264,51 @@ function Lobby({
 
 /* ---------------- Player view (buzzer, no clock) ---------------- */
 
-function PlayerGame({ room, uid, code }: { room: Room; uid: string; code: string }) {
+function PlayerGame({
+  room,
+  uid,
+  code,
+  offset,
+  hasTimekeeper,
+}: {
+  room: Room
+  uid: string
+  code: string
+  offset: number
+  hasTimekeeper: boolean
+}) {
   const target = room.meta.targetMs
   const me = room.players?.[uid]
   const state = me?.state ?? 'idle'
   const startRef = useRef(0)
 
-  const onPress = () => {
-    if (state === 'idle') {
-      startRef.current = performance.now()
-      playerStart(code, uid).catch(() => {})
-    } else if (state === 'running') {
-      const elapsed = performance.now() - startRef.current
-      const errorMs = Math.abs(Math.round(elapsed) - target)
-      playerStop(code, uid, Math.round(elapsed), errorMs).catch(() => {})
-    }
+  // Reset the local start mark whenever we're back to idle (e.g. after a rematch).
+  useEffect(() => {
+    if (state === 'idle') startRef.current = 0
+  }, [state])
+
+  const startSelf = () => {
+    startRef.current = performance.now()
+    playerStart(code, uid).catch(() => {})
+  }
+
+  const stop = () => {
+    // If we started locally, use the precise local delta; if the timekeeper
+    // started us, measure against the server-synced start time.
+    const elapsed =
+      startRef.current > 0
+        ? performance.now() - startRef.current
+        : Date.now() + offset - (me?.startedAt ?? Date.now() + offset)
+    const ms = Math.max(0, Math.round(elapsed))
+    playerStop(code, uid, ms, Math.abs(ms - target)).catch(() => {})
+    startRef.current = 0
   }
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-7 px-6 py-6 text-center">
       <div>
         <p className="text-xs uppercase tracking-[0.2em] text-white/40">Target</p>
-        <p className="mt-1 text-3xl font-black tabular-nums text-emerald-400">
-          {toSec(target)}
-          <span className="text-lg text-white/40">s</span>
-        </p>
+        <p className="mt-1 text-3xl font-black tabular-nums text-emerald-400">{fmtTarget(target)}</p>
       </div>
 
       {state === 'stopped' ? (
@@ -289,16 +317,24 @@ function PlayerGame({ room, uid, code }: { room: Room; uid: string; code: string
           <p className="text-xl font-black">Locked in! ✅</p>
           <p className="text-sm text-white/40">Waiting for results…</p>
         </>
-      ) : (
+      ) : state === 'running' ? (
         <>
           {/* No clock for the player — the timekeeper holds the time. */}
           <Clock ms={0} blank />
-          <TapButton label={state === 'idle' ? 'START' : 'STOP'} onPress={onPress} />
-          <p className="text-sm text-white/40">
-            {state === 'idle'
-              ? 'Tap START, then STOP at the target.'
-              : 'Feel the time — tap STOP at the target.'}
-          </p>
+          <TapButton label="STOP" onPress={stop} />
+          <p className="text-sm text-white/40">Feel the time — tap STOP at the target.</p>
+        </>
+      ) : hasTimekeeper ? (
+        <>
+          <Clock ms={0} blank />
+          <TapButton label="WAIT" />
+          <p className="text-sm text-white/40">Waiting for the timekeeper to start your clock…</p>
+        </>
+      ) : (
+        <>
+          <Clock ms={0} blank />
+          <TapButton label="START" onPress={startSelf} />
+          <p className="text-sm text-white/40">Tap START, then STOP at the target.</p>
         </>
       )}
     </div>
@@ -323,6 +359,7 @@ function TimekeeperGame({ room, code, offset }: { room: Room; code: string; offs
   }, [])
 
   const players = room.players ? Object.entries(room.players) : []
+  const anyIdle = players.some(([, p]) => p.state === 'idle')
 
   const liveMs = (p: RoomPlayer): number => {
     if (p.state === 'running' && p.startedAt) return Math.max(0, now - p.startedAt)
@@ -330,11 +367,17 @@ function TimekeeperGame({ room, code, offset }: { room: Room; code: string; offs
     return 0
   }
 
+  const startAll = () => {
+    players.forEach(([id, p]) => {
+      if (p.state === 'idle') playerStart(code, id).catch(() => {})
+    })
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-5 px-6 py-6">
       <div className="text-center">
         <p className="text-xs uppercase tracking-[0.2em] text-white/40">Timekeeper · {code}</p>
-        <p className="mt-1 text-sm text-white/50">Target {toSec(room.meta.targetMs)}s</p>
+        <p className="mt-1 text-sm text-white/50">Target {fmtTarget(room.meta.targetMs)}</p>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -343,10 +386,22 @@ function TimekeeperGame({ room, code, offset }: { room: Room; code: string; offs
             <div className="flex w-full items-center justify-between">
               <span className="font-semibold">{p.name}</span>
               <span className="text-xs text-white/40">
-                {p.state === 'running' ? 'running…' : p.state === 'stopped' ? `off by ${toSec(p.errorMs ?? 0)}s` : 'ready'}
+                {p.state === 'running'
+                  ? 'running…'
+                  : p.state === 'stopped'
+                    ? `off by ${toSec(p.errorMs ?? 0)}s`
+                    : 'ready'}
               </span>
             </div>
             <Clock ms={liveMs(p)} blank={p.state === 'idle'} />
+            {p.state === 'idle' && (
+              <button
+                onClick={() => playerStart(code, id).catch(() => {})}
+                className="rounded-full bg-emerald-500/90 px-5 py-1.5 text-sm font-bold text-black transition active:scale-95"
+              >
+                Start clock
+              </button>
+            )}
           </div>
         ))}
         {players.length === 0 && (
@@ -354,12 +409,22 @@ function TimekeeperGame({ room, code, offset }: { room: Room; code: string; offs
         )}
       </div>
 
-      <button
-        onClick={() => endGame(code)}
-        className="mt-auto rounded-xl bg-indigo-500 px-4 py-3 font-bold text-white transition active:scale-[0.98]"
-      >
-        Show results
-      </button>
+      <div className="mt-auto flex flex-col gap-2">
+        {anyIdle && players.length > 1 && (
+          <button
+            onClick={startAll}
+            className="rounded-xl bg-emerald-500/90 px-4 py-3 font-bold text-black transition active:scale-[0.98]"
+          >
+            Start all clocks
+          </button>
+        )}
+        <button
+          onClick={() => endGame(code)}
+          className="rounded-xl bg-indigo-500 px-4 py-3 font-bold text-white transition active:scale-[0.98]"
+        >
+          Show results
+        </button>
+      </div>
     </div>
   )
 }
@@ -388,7 +453,7 @@ function Results({
     <div className="flex flex-1 flex-col gap-6 px-6 py-8">
       <div className="text-center">
         <h2 className="text-2xl font-black">Results</h2>
-        <p className="mt-1 text-sm text-white/50">Target {toSec(room.meta.targetMs)}s · closest wins</p>
+        <p className="mt-1 text-sm text-white/50">Target {fmtTarget(room.meta.targetMs)} · closest wins</p>
       </div>
 
       <div className="flex flex-col gap-2">

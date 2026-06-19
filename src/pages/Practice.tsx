@@ -3,7 +3,7 @@ import TapButton from '../components/TapButton.tsx'
 import Clock from '../components/Clock.tsx'
 import EyeToggle from '../components/EyeToggle.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
-import { accuracyMessage, toSec } from '../lib/game.ts'
+import { accuracyMessage, fmtTarget, toSec } from '../lib/game.ts'
 
 type Phase = 'ready' | 'running' | 'result'
 
@@ -63,10 +63,7 @@ export default function Practice({ onBack }: { onBack: () => void }) {
       ) : (
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-white/40">Target</p>
-          <p className="mt-1 text-3xl font-black tabular-nums text-emerald-400">
-            {toSec(target)}
-            <span className="text-lg text-white/40">s</span>
-          </p>
+          <p className="mt-1 text-3xl font-black tabular-nums text-emerald-400">{fmtTarget(target)}</p>
         </div>
       )}
 
