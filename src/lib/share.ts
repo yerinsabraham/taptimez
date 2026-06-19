@@ -9,6 +9,11 @@ export type ShareCardData = {
 
 const SHARE_URL = 'https://taptimez.web.app'
 
+/** A pasteable text link describing the result (for "Copy link"). */
+export function resultShareText(d: ShareCardData): string {
+  return `I hit ${toSec(d.elapsedMs)}s aiming for ${fmtTarget(d.targetMs)} on TapTimez! Can you beat it? ${SHARE_URL}`
+}
+
 /** Draws a vertical, TikTok-friendly result card onto a canvas. */
 function drawCard(d: ShareCardData): HTMLCanvasElement {
   const W = 1080
