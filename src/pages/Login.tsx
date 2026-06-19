@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { authErrorMessage, emailSignIn, emailSignUp, googleSignIn } from '../lib/auth-actions.ts'
+import TapButton from '../components/TapButton.tsx'
 
 export default function Login() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -35,13 +36,16 @@ export default function Login() {
 
   return (
     <div className="flex min-h-full flex-col justify-center gap-8 px-6 py-10">
-      <div className="text-center">
-        <h1 className="bg-gradient-to-b from-white to-white/60 bg-clip-text text-4xl font-black tracking-tight text-transparent">
-          TapTimez
-        </h1>
-        <p className="mt-2 text-sm text-white/50">
-          {mode === 'signin' ? 'Sign in to play' : 'Create your account'}
-        </p>
+      <div className="flex flex-col items-center gap-5 text-center">
+        <TapButton size={92} pulsing />
+        <div>
+          <h1 className="bg-gradient-to-b from-white to-white/60 bg-clip-text text-4xl font-black tracking-tight text-transparent">
+            TapTimez
+          </h1>
+          <p className="mt-2 text-sm text-white/50">
+            {mode === 'signin' ? 'Sign in to play' : 'Create your account'}
+          </p>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">

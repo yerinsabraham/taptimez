@@ -22,3 +22,83 @@ body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
+
+/* ---- TapButton: the arcade-style green buzzer ---- */
+
+@keyframes tapGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 28px 5px rgba(34, 197, 94, 0.45),
+      0 0 78px 16px rgba(34, 197, 94, 0.22),
+      inset 0 3px 9px rgba(255, 255, 255, 0.55),
+      inset 0 -16px 28px rgba(0, 60, 22, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 44px 11px rgba(34, 197, 94, 0.72),
+      0 0 120px 30px rgba(34, 197, 94, 0.4),
+      inset 0 3px 9px rgba(255, 255, 255, 0.6),
+      inset 0 -16px 28px rgba(0, 60, 22, 0.5);
+  }
+}
+
+.tap-button {
+  width: clamp(176px, 56vw, 264px);
+  aspect-ratio: 1 / 1;
+  border: none;
+  border-radius: 9999px;
+  position: relative;
+  cursor: pointer;
+  /* dome: bright near-white core fading out to deep green */
+  background: radial-gradient(
+    circle at 50% 32%,
+    #ecfff3 0%,
+    #9bf6b8 24%,
+    #34d36a 50%,
+    #18b24e 76%,
+    #0f7a37 100%
+  );
+  box-shadow:
+    0 0 30px 6px rgba(34, 197, 94, 0.45),
+    0 0 80px 18px rgba(34, 197, 94, 0.22),
+    inset 0 3px 9px rgba(255, 255, 255, 0.55),
+    inset 0 -16px 28px rgba(0, 60, 22, 0.5);
+  transition:
+    transform 80ms ease,
+    filter 120ms ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tap-button--pulse {
+  animation: tapGlow 2.2s ease-in-out infinite;
+}
+
+.tap-button:active {
+  transform: scale(0.95);
+  filter: brightness(1.1);
+}
+
+.tap-button:disabled {
+  cursor: default;
+}
+
+.tap-button__label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #06371b;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.45);
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tap-button--pulse {
+    animation: none;
+  }
+}

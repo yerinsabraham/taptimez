@@ -12,28 +12,34 @@ import UsernameSetup from './pages/UsernameSetup.tsx'
 export default function App() {
   const { user, profile, loadingAuth } = useAuth()
 
-  // 1. Still resolving auth, or signed in but profile not yet loaded.
-  if (loadingAuth || (user && profile === undefined)) return <Splash />
+  let content
+  if (loadingAuth || (user && profile === undefined)) {
+    // Resolving auth, or signed in but profile not yet loaded.
+    content = <Splash />
+  } else if (!user) {
+    content = <Login />
+  } else if (!profile) {
+    // Signed in but hasn't chosen a username yet.
+    content = <UsernameSetup />
+  } else {
+    // Fully set up — the real app.
+    content = (
+      <>
+        <main className="flex flex-1 flex-col">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/play" element={<Play />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+        <Nav />
+      </>
+    )
+  }
 
-  // 2. Not signed in.
-  if (!user) return <Login />
-
-  // 3. Signed in but hasn't chosen a username yet.
-  if (!profile) return <UsernameSetup />
-
-  // 4. Fully set up — the real app.
-  return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col">
-      <main className="flex flex-1 flex-col">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/play" element={<Play />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-      <Nav />
-    </div>
-  )
+  // Every screen (auth + app) lives in one centered, phone-width column so the
+  // desktop layout is a tidy centered column instead of full-bleed inputs.
+  return <div className="mx-auto flex min-h-full w-full max-w-md flex-col">{content}</div>
 }
