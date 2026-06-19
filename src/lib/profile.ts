@@ -39,7 +39,7 @@ export async function claimUsernameAndCreateProfile(
 ): Promise<void> {
   const username = validateUsername(rawUsername)
   if (!username) {
-    throw new Error('Username must be 3–15 letters, numbers, or underscores.')
+    throw new Error('Username must be 3 to 15 letters, numbers, or underscores.')
   }
 
   const usernameRef = doc(db, 'usernames', username.toLowerCase())

@@ -43,7 +43,7 @@ export default function UsernameSetup() {
           onChange={(e) => setUsername(e.target.value)}
           className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-lg text-white outline-none focus:border-indigo-400"
         />
-        <p className="text-center text-xs text-white/30">3–15 letters, numbers, or underscores</p>
+        <p className="text-center text-xs text-white/30">3 to 15 letters, numbers, or underscores</p>
 
         {error && <p className="text-center text-sm text-red-400">{error}</p>}
 

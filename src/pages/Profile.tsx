@@ -4,7 +4,7 @@ import { logOut } from '../lib/auth-actions.ts'
 import { isSoundEnabled, setSoundEnabled } from '../lib/sound.ts'
 
 function fmtMs(ms: number | null): string {
-  return ms == null ? '—' : `${(ms / 1000).toFixed(3)}s`
+  return ms == null ? '--' : `${(ms / 1000).toFixed(3)}s`
 }
 
 export default function Profile() {
@@ -13,7 +13,7 @@ export default function Profile() {
   if (!profile) return null
 
   const stats = [
-    { label: 'Best accuracy', value: profile.bestErrorMs == null ? '—' : `±${fmtMs(profile.bestErrorMs)}` },
+    { label: 'Best accuracy', value: profile.bestErrorMs == null ? '--' : `±${fmtMs(profile.bestErrorMs)}` },
     { label: 'Best stop', value: fmtMs(profile.bestElapsedMs) },
     { label: 'Attempts', value: String(profile.totalAttempts) },
     { label: 'Wins', value: String(profile.totalWins) },

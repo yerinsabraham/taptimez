@@ -42,8 +42,32 @@ function getCtx(): AudioContext | null {
   return ctx
 }
 
+let unlockBound = false
+/**
+ * Browsers create AudioContexts "suspended" until a user gesture. Resume it on
+ * the first interaction so the very first beep isn't swallowed. Call once at startup.
+ */
+export function initSound(): void {
+  if (typeof window === 'undefined' || unlockBound) return
+  unlockBound = true
+  const unlock = () => {
+    const c = getCtx()
+    if (!c) return
+    if (c.state !== 'running') {
+      void c.resume()
+      return
+    }
+    window.removeEventListener('pointerdown', unlock)
+    window.removeEventListener('keydown', unlock)
+    window.removeEventListener('touchstart', unlock)
+  }
+  window.addEventListener('pointerdown', unlock)
+  window.addEventListener('keydown', unlock)
+  window.addEventListener('touchstart', unlock)
+}
+
 /** A short percussive beep. */
-function blip(freq: number, durationMs: number, type: OscillatorType = 'square', peak = 0.22): void {
+function blip(freq: number, durationMs: number, type: OscillatorType = 'square', peak = 0.3): void {
   const c = getCtx()
   if (!c) return
   const osc = c.createOscillator()
@@ -87,7 +111,7 @@ export function startTone(): void {
   gain.connect(c.destination)
   const now = c.currentTime
   gain.gain.setValueAtTime(0.0001, now)
-  gain.gain.exponentialRampToValueAtTime(0.12, now + 0.03)
+  gain.gain.exponentialRampToValueAtTime(0.16, now + 0.03)
   osc.start(now)
   toneOsc = osc
   toneGain = gain

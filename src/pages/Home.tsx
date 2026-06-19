@@ -15,7 +15,7 @@ export default function Home() {
         <p className="mt-3 text-white/60">
           Predict the time. Tap to start, tap to stop,
           <br />
-          and land as close to the target as you can — no clock.
+          and land as close to the target as you can. No clock.
         </p>
         {profile && (
           <p className="mt-3 text-sm text-white/40">Welcome, {profile.username} 👋</p>

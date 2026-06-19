@@ -87,7 +87,7 @@ export default function Practice({ onBack }: { onBack: () => void }) {
               ? 'Tap START, then STOP at your target.'
               : showClock
                 ? 'Tap STOP when the clock reaches your target.'
-                : 'Feel the time — tap STOP at your target.'}
+                : 'Feel the time. Tap STOP at your target.'}
           </p>
         </>
       ) : (
@@ -96,8 +96,8 @@ export default function Practice({ onBack }: { onBack: () => void }) {
             <p className="text-2xl font-black">{accuracyMessage(errorMs)}</p>
             <p className="text-sm text-white/50">
               You stopped at{' '}
-              <span className="font-semibold text-white/80">{toSec(finalRef.current)}s</span> —
-              off by <span className="font-semibold text-white/80">{toSec(errorMs)}s</span>
+              <span className="font-semibold text-white/80">{toSec(finalRef.current)}s</span>, off
+              by <span className="font-semibold text-white/80">{toSec(errorMs)}s</span>
             </p>
           </div>
           <button

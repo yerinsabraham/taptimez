@@ -37,12 +37,12 @@ function ModeSelect({ onPick }: { onPick: (r: Route) => void }) {
       <div className="flex flex-col gap-3">
         <ModeCard
           title="Practice"
-          desc="Pick a target and train — hide or show the clock."
+          desc="Pick a target and train, with the clock shown or hidden."
           onClick={() => onPick('practice')}
         />
         <ModeCard
           title="Player"
-          desc="Play solo or against friends — no clock, just instinct."
+          desc="Play solo or against friends. No clock, just instinct."
           onClick={() => onPick('player')}
         />
         <ModeCard

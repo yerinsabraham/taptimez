@@ -74,7 +74,7 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
           <p className="text-sm text-white/40">
             {phase === 'ready'
               ? 'No clock. Tap START, then STOP at your target.'
-              : 'Feel the time — tap STOP at your target.'}
+              : 'Feel the time. Tap STOP at your target.'}
           </p>
         </>
       ) : (
@@ -88,7 +88,7 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
               )}
               <p className="text-sm text-white/50">
                 Stopped at{' '}
-                <span className="font-semibold text-white/80">{toSec(result.elapsed)}s</span> — off
+                <span className="font-semibold text-white/80">{toSec(result.elapsed)}s</span>, off
                 by <span className="font-semibold text-white/80">{toSec(result.errorMs)}s</span>
               </p>
             </div>

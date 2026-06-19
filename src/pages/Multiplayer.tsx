@@ -332,7 +332,7 @@ function PlayerGame({
           {/* No clock for the player — the timekeeper holds the time. */}
           <Clock ms={0} blank />
           <TapButton label="STOP" onPress={stop} />
-          <p className="text-sm text-white/40">Feel the time — tap STOP at the target.</p>
+          <p className="text-sm text-white/40">Feel the time. Tap STOP at the target.</p>
         </>
       ) : hasTimekeeper ? (
         <>
