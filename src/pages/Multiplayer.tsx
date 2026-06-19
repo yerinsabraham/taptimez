@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../lib/auth.tsx'
+import { useMatch } from '../lib/match.tsx'
 import TapButton from '../components/TapButton.tsx'
 import Clock from '../components/Clock.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
@@ -8,6 +9,8 @@ import PerfectBurst from '../components/PerfectBurst.tsx'
 import { fmtTarget, isPerfect, toSec } from '../lib/game.ts'
 import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 import { recordRankedAttempt } from '../lib/attempts.ts'
+import { sendChallenge } from '../lib/challenges.ts'
+import { subscribeOnline, type OnlineUser } from '../lib/presence.ts'
 import {
   createRoom,
   endGame,
@@ -24,13 +27,19 @@ import {
   type RoomPlayer,
 } from '../lib/rooms.ts'
 
-export default function Multiplayer({ role, onExit }: { role: Role; onExit: () => void }) {
+const CHALLENGE_TARGET_MS = 5000
+
+/* ---------------- The active room (driven by the match context) ---------------- */
+
+export function RoomScreen() {
   const { user, profile } = useAuth()
-  const [code, setCode] = useState<string | null>(null)
+  const { match, leave } = useMatch()
+  const code = match?.code ?? null
+  const role = match?.role ?? null
+  const uid = user?.uid
   const [room, setRoom] = useState<Room | null>(null)
   const [offset, setOffset] = useState(0)
 
-  // Subscribe to the room + server clock offset once we have a code.
   useEffect(() => {
     if (!code) return
     const unsubRoom = subscribeRoom(code, setRoom)
@@ -40,14 +49,6 @@ export default function Multiplayer({ role, onExit }: { role: Role; onExit: () =
       unsubOffset()
     }
   }, [code])
-
-  // Leave the room when we unmount.
-  const uid = user?.uid
-  useEffect(() => {
-    return () => {
-      if (code && uid) leaveRoom(code, uid).catch(() => {})
-    }
-  }, [code, uid])
 
   // Host auto-ends the game when there's no timekeeper and all players stopped.
   useEffect(() => {
@@ -60,20 +61,11 @@ export default function Multiplayer({ role, onExit }: { role: Role; onExit: () =
     if (!hasTimekeeper && allStopped) endGame(code).catch(() => {})
   }, [room, uid, code])
 
-  if (!user || !profile) return null
-  const name = profile.username
+  if (!match || !user || !profile || !code || !role) return null
 
-  if (!code) {
-    return (
-      <Entry
-        role={role}
-        onExit={onExit}
-        onCreate={(targetMs) =>
-          createRoom(user.uid, name, role, targetMs).then(setCode)
-        }
-        onJoin={(c) => joinRoom(c, user.uid, name, role).then(() => setCode(c))}
-      />
-    )
+  const exit = () => {
+    leaveRoom(code, user.uid).catch(() => {})
+    leave()
   }
 
   if (!room) return <Splash />
@@ -82,44 +74,34 @@ export default function Multiplayer({ role, onExit }: { role: Role; onExit: () =
   const isHost = room.meta?.hostUid === user.uid
 
   if (status === 'done') {
-    return <Results room={room} uid={user.uid} isHost={isHost} code={code} onExit={onExit} />
+    return <Results room={room} uid={user.uid} isHost={isHost} code={code} onExit={exit} />
   }
   if (status === 'playing') {
     const participants = room.participants ? Object.values(room.participants) : []
     const hasTimekeeper = participants.some((p) => p.role === 'timekeeper')
     return role === 'player' ? (
-      <PlayerGame
-        room={room}
-        uid={user.uid}
-        code={code}
-        offset={offset}
-        hasTimekeeper={hasTimekeeper}
-      />
+      <PlayerGame room={room} uid={user.uid} code={code} offset={offset} hasTimekeeper={hasTimekeeper} />
     ) : (
       <TimekeeperGame room={room} code={code} offset={offset} />
     )
   }
-  return <Lobby room={room} code={code} isHost={isHost} onStart={() => startGame(code)} onExit={onExit} />
+  return <Lobby room={room} code={code} isHost={isHost} onStart={() => startGame(code)} onExit={exit} />
 }
 
-/* ---------------- Entry: create or join ---------------- */
+/* ---------------- Entry: online / create / join ---------------- */
 
-function Entry({
-  role,
-  onCreate,
-  onJoin,
-  onExit,
-}: {
-  role: Role
-  onCreate: (targetMs: number) => Promise<void>
-  onJoin: (code: string) => Promise<void>
-  onExit: () => void
-}) {
-  const [tab, setTab] = useState<'create' | 'join'>('create')
+export function RoomEntry({ role, onExit }: { role: Role; onExit: () => void }) {
+  const { user, profile } = useAuth()
+  const { enter } = useMatch()
+  const tabs = role === 'player' ? (['online', 'create', 'join'] as const) : (['create', 'join'] as const)
+  const [tab, setTab] = useState<(typeof tabs)[number]>(tabs[0])
   const [target, setTarget] = useState(5000)
   const [joinCode, setJoinCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  if (!user || !profile) return null
+  const name = profile.username
 
   async function run(fn: () => Promise<void>) {
     setBusy(true)
@@ -132,6 +114,19 @@ function Entry({
     }
   }
 
+  const create = () =>
+    run(async () => {
+      const code = await createRoom(user.uid, name, role, target)
+      enter(code, role)
+    })
+
+  const join = () =>
+    run(async () => {
+      const c = joinCode.trim().toUpperCase()
+      await joinRoom(c, user.uid, name, role)
+      enter(c, role)
+    })
+
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-8">
       <button onClick={onExit} className="self-start text-sm text-white/40 transition hover:text-white/70">
@@ -143,12 +138,12 @@ function Entry({
         <p className="mt-1 text-sm text-white/50">
           {role === 'timekeeper'
             ? 'Host a game or join one to keep time.'
-            : 'Create a game or join a friend with a code.'}
+            : 'Challenge someone online, or play with a code.'}
         </p>
       </div>
 
       <div className="flex gap-2 rounded-full border border-white/10 bg-white/5 p-1">
-        {(['create', 'join'] as const).map((t) => (
+        {tabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -161,19 +156,23 @@ function Entry({
         ))}
       </div>
 
-      {tab === 'create' ? (
+      {tab === 'online' && <OnlineList meUid={user.uid} meName={name} onEnter={enter} />}
+
+      {tab === 'create' && (
         <div className="flex flex-col items-center gap-5">
           <p className="text-xs uppercase tracking-[0.2em] text-white/40">Target time</p>
           <TargetStepper targetMs={target} onChange={setTarget} />
           <button
             disabled={busy}
-            onClick={() => run(() => onCreate(target))}
+            onClick={create}
             className="w-full rounded-xl bg-indigo-500 px-4 py-3 font-bold text-white transition active:scale-[0.98] disabled:opacity-50"
           >
             {busy ? 'Creating…' : 'Create game'}
           </button>
         </div>
-      ) : (
+      )}
+
+      {tab === 'join' && (
         <div className="flex flex-col gap-3">
           <input
             value={joinCode}
@@ -187,7 +186,7 @@ function Entry({
           />
           <button
             disabled={busy || joinCode.trim().length < 4}
-            onClick={() => run(() => onJoin(joinCode.trim()))}
+            onClick={join}
             className="rounded-xl bg-indigo-500 px-4 py-3 font-bold text-white transition active:scale-[0.98] disabled:opacity-50"
           >
             {busy ? 'Joining…' : 'Join game'}
@@ -196,6 +195,77 @@ function Entry({
       )}
 
       {error && <p className="text-center text-sm text-red-400">{error}</p>}
+    </div>
+  )
+}
+
+/* ---------------- Online players list ---------------- */
+
+function OnlineList({
+  meUid,
+  meName,
+  onEnter,
+}: {
+  meUid: string
+  meName: string
+  onEnter: (code: string, role: Role) => void
+}) {
+  const [users, setUsers] = useState<OnlineUser[] | null>(null)
+  const [busyUid, setBusyUid] = useState<string | null>(null)
+
+  useEffect(() => subscribeOnline(setUsers), [])
+
+  const others = (users ?? []).filter((u) => u.uid !== meUid)
+
+  const challenge = async (target: OnlineUser) => {
+    setBusyUid(target.uid)
+    try {
+      const code = await createRoom(meUid, meName, 'player', CHALLENGE_TARGET_MS)
+      await sendChallenge({
+        fromUid: meUid,
+        fromName: meName,
+        toUid: target.uid,
+        toName: target.username,
+        code,
+      })
+      onEnter(code, 'player')
+    } catch {
+      setBusyUid(null)
+    }
+  }
+
+  if (!users) return <Splash />
+  if (others.length === 0) {
+    return (
+      <p className="px-2 py-6 text-center text-sm text-white/40">
+        No one else is online right now. Invite a friend with a code!
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {others.map((u) => (
+        <div
+          key={u.uid}
+          className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+        >
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${u.status === 'playing' ? 'bg-amber-400' : 'bg-emerald-400'}`}
+            />
+            <span className="font-semibold">{u.username}</span>
+            {u.status === 'playing' && <span className="text-[10px] text-amber-300/80">in game</span>}
+          </div>
+          <button
+            disabled={busyUid === u.uid || u.status === 'playing'}
+            onClick={() => challenge(u)}
+            className="rounded-full bg-indigo-500 px-4 py-1.5 text-sm font-bold text-white transition active:scale-95 disabled:opacity-40"
+          >
+            {busyUid === u.uid ? 'Waiting…' : 'Challenge'}
+          </button>
+        </div>
+      ))}
     </div>
   )
 }

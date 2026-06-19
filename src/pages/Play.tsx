@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Practice from './Practice.tsx'
 import SinglePlayer from './SinglePlayer.tsx'
-import Multiplayer from './Multiplayer.tsx'
+import { RoomEntry } from './Multiplayer.tsx'
 
 type Route = 'menu' | 'practice' | 'player' | 'single' | 'multiplayer' | 'timekeeper'
 
@@ -15,9 +15,9 @@ export default function Play() {
     case 'single':
       return <SinglePlayer onBack={() => setRoute('player')} />
     case 'multiplayer':
-      return <Multiplayer role="player" onExit={back} />
+      return <RoomEntry role="player" onExit={back} />
     case 'timekeeper':
-      return <Multiplayer role="timekeeper" onExit={back} />
+      return <RoomEntry role="timekeeper" onExit={back} />
     case 'player':
       return <PlayerChoice onBack={back} onPick={setRoute} />
     default:

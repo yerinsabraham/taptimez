@@ -1,7 +1,11 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/auth.tsx'
+import { MatchProvider, useMatch } from './lib/match.tsx'
 import Nav from './components/Nav.tsx'
 import Splash from './components/Splash.tsx'
+import PresenceManager from './components/PresenceManager.tsx'
+import ChallengeWatcher from './components/ChallengeWatcher.tsx'
+import { RoomScreen } from './pages/Multiplayer.tsx'
 import Home from './pages/Home.tsx'
 import Play from './pages/Play.tsx'
 import Leaderboard from './pages/Leaderboard.tsx'
@@ -14,32 +18,47 @@ export default function App() {
 
   let content
   if (loadingAuth || (user && profile === undefined)) {
-    // Resolving auth, or signed in but profile not yet loaded.
     content = <Splash />
   } else if (!user) {
     content = <Login />
   } else if (!profile) {
-    // Signed in but hasn't chosen a username yet.
     content = <UsernameSetup />
   } else {
-    // Fully set up — the real app.
     content = (
-      <>
-        <main className="flex flex-1 flex-col">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/play" element={<Play />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-        <Nav />
-      </>
+      <MatchProvider>
+        <Authed />
+      </MatchProvider>
     )
   }
 
-  // Every screen (auth + app) lives in one centered, phone-width column so the
-  // desktop layout is a tidy centered column instead of full-bleed inputs.
+  // Every screen lives in one centered, phone-width column.
   return <div className="mx-auto flex min-h-full w-full max-w-md flex-col">{content}</div>
+}
+
+/** Signed-in app: presence + challenge popup, then either a live room or the tabs. */
+function Authed() {
+  const { match } = useMatch()
+
+  return (
+    <>
+      <PresenceManager />
+      <ChallengeWatcher />
+      {match ? (
+        <RoomScreen />
+      ) : (
+        <>
+          <main className="flex flex-1 flex-col">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/play" element={<Play />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
+          <Nav />
+        </>
+      )}
+    </>
+  )
 }
