@@ -3,9 +3,10 @@ import { useAuth } from '../lib/auth.tsx'
 import TapButton from '../components/TapButton.tsx'
 import Clock from '../components/Clock.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
+import PerfectBurst from '../components/PerfectBurst.tsx'
 import { recordSoloAttempt } from '../lib/attempts.ts'
-import { accuracyMessage, fmtTarget, toSec } from '../lib/game.ts'
-import { feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
+import { accuracyMessage, fmtTarget, isPerfect, toSec } from '../lib/game.ts'
+import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 
 type Phase = 'ready' | 'running' | 'result'
 type Result = { elapsed: number; errorMs: number; isBest: boolean }
@@ -15,6 +16,7 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
   const [target, setTarget] = useState(5000)
   const [phase, setPhase] = useState<Phase>('ready')
   const [result, setResult] = useState<Result | null>(null)
+  const [showPerfect, setShowPerfect] = useState(false)
   const startRef = useRef(0)
 
   // Sustained tone while the timer runs.
@@ -30,11 +32,16 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
       startRef.current = performance.now()
       setPhase('running')
     } else if (phase === 'running') {
-      feedbackStop()
       const elapsed = performance.now() - startRef.current
       const errorMs = Math.abs(Math.round(elapsed) - target)
       setResult({ elapsed, errorMs, isBest: false })
       setPhase('result')
+      if (isPerfect(errorMs)) {
+        feedbackPerfect()
+        setShowPerfect(true)
+      } else {
+        feedbackStop()
+      }
       if (user) {
         recordSoloAttempt(user.uid, target, elapsed)
           .then((r) => setResult({ elapsed, errorMs: r.errorMs, isBest: r.isBest }))
@@ -50,6 +57,7 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-6 text-center">
+      {showPerfect && <PerfectBurst onDone={() => setShowPerfect(false)} />}
       <button onClick={onBack} className="self-start text-sm text-white/40 transition hover:text-white/70">
         ‹ Back
       </button>

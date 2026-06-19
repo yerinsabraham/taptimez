@@ -4,8 +4,9 @@ import TapButton from '../components/TapButton.tsx'
 import Clock from '../components/Clock.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
 import Splash from '../components/Splash.tsx'
-import { fmtTarget, toSec } from '../lib/game.ts'
-import { feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
+import PerfectBurst from '../components/PerfectBurst.tsx'
+import { fmtTarget, isPerfect, toSec } from '../lib/game.ts'
+import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 import {
   createRoom,
   endGame,
@@ -224,7 +225,10 @@ function Lobby({
 
       <div className="text-center">
         <p className="text-xs uppercase tracking-[0.2em] text-white/40">Game code</p>
-        <p className="mt-1 text-5xl font-black tracking-[0.3em] text-emerald-400">{code}</p>
+        <div className="mt-1 flex items-center justify-center gap-3">
+          <p className="text-5xl font-black tracking-[0.3em] text-emerald-400">{code}</p>
+          <CopyCode code={code} />
+        </div>
         <p className="mt-2 text-sm text-white/50">
           Target {fmtTarget(room.meta.targetMs)} · share the code to invite players & a timekeeper
         </p>
@@ -282,6 +286,7 @@ function PlayerGame({
   const me = room.players?.[uid]
   const state = me?.state ?? 'idle'
   const startRef = useRef(0)
+  const [showPerfect, setShowPerfect] = useState(false)
 
   // Reset the local start mark whenever we're back to idle (e.g. after a rematch).
   useEffect(() => {
@@ -302,7 +307,6 @@ function PlayerGame({
   }
 
   const stop = () => {
-    feedbackStop()
     // If we started locally, use the precise local delta; if the timekeeper
     // started us, measure against the server-synced start time.
     const elapsed =
@@ -310,12 +314,20 @@ function PlayerGame({
         ? performance.now() - startRef.current
         : Date.now() + offset - (me?.startedAt ?? Date.now() + offset)
     const ms = Math.max(0, Math.round(elapsed))
-    playerStop(code, uid, ms, Math.abs(ms - target)).catch(() => {})
+    const err = Math.abs(ms - target)
+    playerStop(code, uid, ms, err).catch(() => {})
     startRef.current = 0
+    if (isPerfect(err)) {
+      feedbackPerfect()
+      setShowPerfect(true)
+    } else {
+      feedbackStop()
+    }
   }
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-7 px-6 py-6 text-center">
+      {showPerfect && <PerfectBurst onDone={() => setShowPerfect(false)} />}
       <div>
         <p className="text-xs uppercase tracking-[0.2em] text-white/40">Target</p>
         <p className="mt-1 text-3xl font-black tabular-nums text-emerald-400">{fmtTarget(target)}</p>
@@ -506,5 +518,40 @@ function Results({
         </button>
       </div>
     </div>
+  )
+}
+
+/* ---------------- Copy code button ---------------- */
+
+function CopyCode({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+
+  return (
+    <button
+      onClick={copy}
+      aria-label={copied ? 'Copied' : 'Copy code'}
+      className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-white/70 transition active:scale-95"
+    >
+      {copied ? (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34d36a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      )}
+    </button>
   )
 }

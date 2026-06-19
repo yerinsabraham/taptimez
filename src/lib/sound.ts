@@ -1,8 +1,12 @@
 /**
  * Game feedback (sound + vibration), synthesized with the Web Audio API.
- *  - START: a playful upward "coin" chirp + a buzz, then a lively running tone.
- *  - while running: a bright tone with vibrato + tremolo (gamey, not a flatline).
- *  - STOP: a friendly downward chirp + a buzz.
+ * Arcade-style: one consistent SQUARE-wave timbre, bright high notes that jump
+ * UP on press, with a touch of echo for that "let's go!" feel.
+ *
+ *  - START: a quick two-note jump up + the running tone.
+ *  - while running: a bright square tone with a gentle pulse.
+ *  - STOP: a quick two-note step down.
+ *  - PERFECT: a rising fanfare.
  *
  * Prefs (localStorage): sound on/off (default on), volume 0..1 (default 0.6),
  * vibration on/off (default on).
@@ -13,9 +17,8 @@ const VOL_KEY = 'taptimez:volume'
 const VIB_KEY = 'taptimez:vibrate'
 
 let ctx: AudioContext | null = null
-let master: GainNode | null = null
-let tone: { osc: OscillatorNode; vib: OscillatorNode; trem: OscillatorNode; amp: GainNode } | null =
-  null
+let graph: { master: GainNode; delay: DelayNode } | null = null
+let tone: { osc: OscillatorNode; trem: OscillatorNode; amp: GainNode } | null = null
 
 /* ---------------- preferences ---------------- */
 
@@ -52,7 +55,7 @@ export function setVolume(v: number): void {
   } catch {
     /* ignore */
   }
-  if (master) master.gain.value = vol
+  if (graph) graph.master.gain.value = vol
 }
 
 export function isVibrationEnabled(): boolean {
@@ -85,13 +88,22 @@ function getCtx(): AudioContext | null {
   return ctx
 }
 
-function getMaster(c: AudioContext): GainNode {
-  if (!master) {
-    master = c.createGain()
+function getGraph(c: AudioContext): { master: GainNode; delay: DelayNode } {
+  if (!graph) {
+    const master = c.createGain()
     master.gain.value = getVolume()
     master.connect(c.destination)
+    // short feedback delay for an arcade echo
+    const delay = c.createDelay(0.5)
+    delay.delayTime.value = 0.13
+    const fb = c.createGain()
+    fb.gain.value = 0.22
+    delay.connect(fb)
+    fb.connect(delay)
+    delay.connect(master)
+    graph = { master, delay }
   }
-  return master
+  return graph
 }
 
 let unlockBound = false
@@ -115,94 +127,101 @@ export function initSound(): void {
   window.addEventListener('touchstart', unlock)
 }
 
-/** A short pitch-sweep "chirp" (coin-style), routed through the volume master. */
-function chirp(fromHz: number, toHz: number, durationMs: number, peak = 0.5): void {
+/** One bright square-wave note, optionally fed into the echo. */
+function note(freq: number, atOffset: number, durMs: number, peak = 0.45, echo = true): void {
   const c = getCtx()
   if (!c) return
-  const out = getMaster(c)
+  const { master, delay } = getGraph(c)
+  const t0 = c.currentTime + atOffset
+  const t1 = t0 + durMs / 1000
   const osc = c.createOscillator()
-  const gain = c.createGain()
-  osc.type = 'triangle'
-  const now = c.currentTime
-  const end = now + durationMs / 1000
-  osc.frequency.setValueAtTime(fromHz, now)
-  osc.frequency.exponentialRampToValueAtTime(toHz, end)
-  gain.gain.setValueAtTime(0.0001, now)
-  gain.gain.exponentialRampToValueAtTime(peak, now + 0.012)
-  gain.gain.exponentialRampToValueAtTime(0.0001, end)
-  osc.connect(gain)
-  gain.connect(out)
-  osc.start(now)
-  osc.stop(end + 0.02)
+  osc.type = 'square'
+  osc.frequency.value = freq
+  const lp = c.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 3600 // tame the harsh upper harmonics
+  const g = c.createGain()
+  g.gain.setValueAtTime(0.0001, t0)
+  g.gain.exponentialRampToValueAtTime(peak, t0 + 0.008)
+  g.gain.exponentialRampToValueAtTime(0.0001, t1)
+  osc.connect(lp)
+  lp.connect(g)
+  g.connect(master)
+  if (echo) g.connect(delay)
+  osc.start(t0)
+  osc.stop(t1 + 0.02)
 }
 
 /* ---------------- public sounds ---------------- */
 
-/** Playful upward chirp when the player taps START. */
+/** Quick upward two-note jump on START. */
 export function clickStart(): void {
   if (!isSoundEnabled()) return
-  chirp(660, 1320, 110)
+  note(988, 0, 55, 0.42)
+  note(1480, 0.05, 80, 0.5)
 }
 
-/** Friendly downward chirp when the player taps STOP. */
+/** Quick downward two-note step on STOP. */
 export function clickStop(): void {
   if (!isSoundEnabled()) return
-  chirp(990, 520, 150)
+  note(1320, 0, 55, 0.42)
+  note(880, 0.05, 90, 0.5)
 }
 
-/** Begin the lively running tone (bright + vibrato + tremolo). */
+/** Rising fanfare for a perfect score. */
+export function playPerfect(): void {
+  if (!isSoundEnabled()) return
+  ;[784, 988, 1318, 1568].forEach((f, i) => note(f, i * 0.085, 120, 0.5))
+  note(2093, 4 * 0.085, 220, 0.42)
+}
+
+/** Begin the lively running tone (bright square + gentle pulse). */
 export function startTone(): void {
   if (!isSoundEnabled()) return
   const c = getCtx()
   if (!c) return
   stopTone()
-  const out = getMaster(c)
+  const { master } = getGraph(c)
   const now = c.currentTime
 
   const osc = c.createOscillator()
-  osc.type = 'triangle'
-  osc.frequency.value = 784 // bright, playful
+  osc.type = 'square'
+  osc.frequency.value = 988 // bright, high
 
-  // vibrato: wobble the pitch so it feels alive (not a flat EKG tone)
-  const vib = c.createOscillator()
-  vib.type = 'sine'
-  vib.frequency.value = 6.5
-  const vibDepth = c.createGain()
-  vibDepth.gain.value = 16
-  vib.connect(vibDepth)
-  vibDepth.connect(osc.frequency)
+  const lp = c.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 3200
 
-  // tremolo: gentle amplitude pulse for a gamey rhythm
+  // gentle tremolo for energy (no warble)
   const amp = c.createGain()
   amp.gain.setValueAtTime(0.0001, now)
-  amp.gain.exponentialRampToValueAtTime(0.34, now + 0.04)
+  amp.gain.exponentialRampToValueAtTime(0.15, now + 0.03)
   const trem = c.createOscillator()
   trem.type = 'sine'
-  trem.frequency.value = 9
+  trem.frequency.value = 7
   const tremDepth = c.createGain()
-  tremDepth.gain.value = 0.12
+  tremDepth.gain.value = 0.045
   trem.connect(tremDepth)
   tremDepth.connect(amp.gain)
 
-  osc.connect(amp)
-  amp.connect(out)
+  osc.connect(lp)
+  lp.connect(amp)
+  amp.connect(master)
   osc.start(now)
-  vib.start(now)
   trem.start(now)
-  tone = { osc, vib, trem, amp }
+  tone = { osc, trem, amp }
 }
 
 /** End the running tone with a quick fade. */
 export function stopTone(): void {
   if (!ctx || !tone) return
-  const { osc, vib, trem, amp } = tone
+  const { osc, trem, amp } = tone
   const now = ctx.currentTime
   try {
     amp.gain.cancelScheduledValues(now)
     amp.gain.setValueAtTime(Math.max(0.0001, amp.gain.value), now)
     amp.gain.exponentialRampToValueAtTime(0.0001, now + 0.06)
     osc.stop(now + 0.09)
-    vib.stop(now + 0.09)
     trem.stop(now + 0.09)
   } catch {
     /* already stopped */
@@ -231,4 +250,10 @@ export function feedbackStart(): void {
 export function feedbackStop(): void {
   clickStop()
   vibrate([25, 35, 25])
+}
+
+/** Celebration sound + vibration for a perfect score. */
+export function feedbackPerfect(): void {
+  playPerfect()
+  vibrate([0, 40, 40, 40, 40, 80])
 }

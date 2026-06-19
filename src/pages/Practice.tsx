@@ -3,8 +3,9 @@ import TapButton from '../components/TapButton.tsx'
 import Clock from '../components/Clock.tsx'
 import EyeToggle from '../components/EyeToggle.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
-import { accuracyMessage, fmtTarget, toSec } from '../lib/game.ts'
-import { feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
+import PerfectBurst from '../components/PerfectBurst.tsx'
+import { accuracyMessage, fmtTarget, isPerfect, toSec } from '../lib/game.ts'
+import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 
 type Phase = 'ready' | 'running' | 'result'
 
@@ -13,6 +14,7 @@ export default function Practice({ onBack }: { onBack: () => void }) {
   const [phase, setPhase] = useState<Phase>('ready')
   const [displayMs, setDisplayMs] = useState(0)
   const [showClock, setShowClock] = useState(true)
+  const [showPerfect, setShowPerfect] = useState(false)
   const startRef = useRef(0)
   const rafRef = useRef(0)
   const finalRef = useRef(0)
@@ -38,14 +40,20 @@ export default function Practice({ onBack }: { onBack: () => void }) {
       }
       rafRef.current = requestAnimationFrame(tick)
     } else if (phase === 'running') {
-      feedbackStop()
       cancelAnimationFrame(rafRef.current)
       const elapsed = performance.now() - startRef.current
       finalRef.current = elapsed
+      const err = Math.abs(Math.round(elapsed) - target)
       setDisplayMs(elapsed)
       setPhase('result')
+      if (isPerfect(err)) {
+        feedbackPerfect()
+        setShowPerfect(true)
+      } else {
+        feedbackStop()
+      }
     }
-  }, [phase])
+  }, [phase, target])
 
   const playAgain = () => {
     setDisplayMs(0)
@@ -58,6 +66,7 @@ export default function Practice({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-6 text-center">
+      {showPerfect && <PerfectBurst onDone={() => setShowPerfect(false)} />}
       <div className="flex w-full items-center justify-between">
         <button onClick={onBack} className="text-sm text-white/40 transition hover:text-white/70">
           ‹ Modes

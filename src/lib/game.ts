@@ -28,6 +28,13 @@ export function fmtTarget(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+/** Within this gap from the target counts as a "perfect" hit. */
+export const PERFECT_MS = 50
+
+export function isPerfect(errorMs: number): boolean {
+  return errorMs <= PERFECT_MS
+}
+
 /** A short reaction based on how far off the stop was from the target. */
 export function accuracyMessage(errorMs: number): string {
   if (errorMs <= 50) return '🎯 Perfect!'

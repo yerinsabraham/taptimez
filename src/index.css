@@ -232,6 +232,89 @@ body {
     animation-duration: 2.6s;
   }
 }
+
+/* ---- Perfect-score celebration ---- */
+.perfect-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.perfect-pieces {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+}
+
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: confettiBurst 1.7s cubic-bezier(0.16, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes confettiBurst {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
+    opacity: 0;
+  }
+}
+
+.perfect-title {
+  font-weight: 900;
+  font-size: clamp(2.5rem, 16vw, 5.5rem);
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #ffffff 0%, #6ff7a3 55%, #18b24e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 18px rgba(52, 211, 106, 0.6));
+  animation: perfectPop 2.4s ease forwards;
+}
+
+@keyframes perfectPop {
+  0% {
+    transform: scale(0.4) rotate(-6deg);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1.18) rotate(2deg);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(0.98) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+  82% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    animation-duration: 1s;
+  }
+  .perfect-title {
+    animation-duration: 1.8s;
+  }
+}
 .clock__value {
   position: relative;
 }
