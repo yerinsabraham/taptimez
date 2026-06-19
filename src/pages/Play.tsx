@@ -1,94 +1,161 @@
-import { useCallback, useRef, useState } from 'react'
-import { useAuth } from '../lib/auth.tsx'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import TapButton from '../components/TapButton.tsx'
-import { recordSoloAttempt } from '../lib/attempts.ts'
+import Clock from '../components/Clock.tsx'
 import { accuracyMessage, randomTargetMs, toSec } from '../lib/game.ts'
 
-type Phase = 'ready' | 'running' | 'result'
-type Result = { elapsed: number; errorMs: number; isBest: boolean }
+type Mode = 'practice' | 'player' | 'timekeeper'
 
 export default function Play() {
-  const { user } = useAuth()
+  const [mode, setMode] = useState<Mode | null>(null)
+
+  if (mode === 'practice') return <PracticeGame onBack={() => setMode(null)} />
+  return <ModeSelect onPick={setMode} />
+}
+
+/* ---------------- Mode select ---------------- */
+
+function ModeSelect({ onPick }: { onPick: (m: Mode) => void }) {
+  return (
+    <div className="flex flex-1 flex-col justify-center gap-6 px-6 py-10">
+      <div className="text-center">
+        <h2 className="text-2xl font-black">Choose a mode</h2>
+        <p className="mt-1 text-sm text-white/50">How do you want to play?</p>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <ModeCard
+          title="Practice"
+          desc="Train with the clock visible — see the timer as you tap."
+          onClick={() => onPick('practice')}
+        />
+        <ModeCard
+          title="Player"
+          desc="Tap to stop with no clock; a timekeeper watches your time."
+          soon
+        />
+        <ModeCard
+          title="Timekeeper"
+          desc="Watch the clock while players stop it."
+          soon
+        />
+      </div>
+    </div>
+  )
+}
+
+function ModeCard({
+  title,
+  desc,
+  onClick,
+  soon,
+}: {
+  title: string
+  desc: string
+  onClick?: () => void
+  soon?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={soon}
+      className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-left transition active:scale-[0.99] disabled:opacity-40"
+    >
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold">{title}</span>
+          {soon && (
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/50">
+              Soon
+            </span>
+          )}
+        </div>
+        <p className="mt-1 text-sm text-white/50">{desc}</p>
+      </div>
+      <span className="text-xl text-white/30">›</span>
+    </button>
+  )
+}
+
+/* ---------------- Practice mode ---------------- */
+
+type Phase = 'ready' | 'running' | 'result'
+
+function PracticeGame({ onBack }: { onBack: () => void }) {
   const [target, setTarget] = useState(randomTargetMs)
   const [phase, setPhase] = useState<Phase>('ready')
-  const [result, setResult] = useState<Result | null>(null)
+  const [displayMs, setDisplayMs] = useState(0)
   const startRef = useRef(0)
+  const rafRef = useRef(0)
+  const finalRef = useRef(0)
+
+  // Stop the animation loop if we leave mid-round.
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
 
   const onPress = useCallback(() => {
     if (phase === 'ready') {
-      // Start: record the local high-resolution timestamp.
       startRef.current = performance.now()
+      setDisplayMs(0)
       setPhase('running')
-      return
-    }
-    if (phase === 'running') {
-      // Stop: the elapsed time is measured entirely on this device.
-      const elapsed = performance.now() - startRef.current
-      const errorMs = Math.abs(Math.round(elapsed) - target)
-      setResult({ elapsed, errorMs, isBest: false })
-      setPhase('result')
-      if (user) {
-        recordSoloAttempt(user.uid, target, elapsed)
-          .then((r) => setResult({ elapsed, errorMs: r.errorMs, isBest: r.isBest }))
-          .catch((err) => console.error('failed to save attempt', err))
+      const tick = () => {
+        setDisplayMs(performance.now() - startRef.current)
+        rafRef.current = requestAnimationFrame(tick)
       }
+      rafRef.current = requestAnimationFrame(tick)
+    } else if (phase === 'running') {
+      cancelAnimationFrame(rafRef.current)
+      const elapsed = performance.now() - startRef.current
+      finalRef.current = elapsed
+      setDisplayMs(elapsed)
+      setPhase('result')
     }
-  }, [phase, target, user])
+  }, [phase])
 
   const playAgain = () => {
     setTarget(randomTargetMs())
-    setResult(null)
+    setDisplayMs(0)
     setPhase('ready')
   }
 
+  const errorMs = Math.abs(Math.round(finalRef.current) - target)
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6 text-center">
-      {phase === 'ready' && (
+    <div className="flex flex-1 flex-col items-center justify-center gap-7 px-6 py-6 text-center">
+      <button
+        onClick={onBack}
+        className="self-start text-sm text-white/40 transition hover:text-white/70"
+      >
+        ‹ Modes
+      </button>
+
+      <div>
+        <p className="text-xs uppercase tracking-[0.2em] text-white/40">Target</p>
+        <p className="mt-1 text-3xl font-black tabular-nums text-indigo-300">
+          {toSec(target)}
+          <span className="text-lg text-white/40">s</span>
+        </p>
+      </div>
+
+      <Clock ms={displayMs} />
+
+      {phase !== 'result' ? (
         <>
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-white/40">Your target</p>
-            <p className="mt-1 text-6xl font-black tabular-nums text-indigo-300">
-              {toSec(target)}
-              <span className="text-2xl text-white/40">s</span>
-            </p>
-          </div>
-          <TapButton label="START" onPress={onPress} />
-          <p className="max-w-xs text-sm text-white/50">
-            Tap <strong className="text-white/80">START</strong>, then tap{' '}
-            <strong className="text-white/80">STOP</strong> when you feel {toSec(target)}s
-            has passed. No clock!
+          <TapButton label={phase === 'ready' ? 'START' : 'STOP'} onPress={onPress} />
+          <p className="text-sm text-white/40">
+            {phase === 'ready'
+              ? 'Tap START, then STOP at the target time.'
+              : 'Tap STOP when the clock reaches your target.'}
           </p>
         </>
-      )}
-
-      {phase === 'running' && (
-        <>
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-              Target {toSec(target)}s
-            </p>
-            <p className="mt-1 text-2xl font-bold text-white/70">Feel the time…</p>
-          </div>
-          <TapButton label="STOP" onPress={onPress} />
-          <p className="text-sm text-white/40">Tap when you think time's up.</p>
-        </>
-      )}
-
-      {phase === 'result' && result && (
+      ) : (
         <>
           <div className="flex flex-col gap-1">
-            <p className="text-3xl font-black">{accuracyMessage(result.errorMs)}</p>
-            {result.isBest && (
-              <p className="text-sm font-semibold text-emerald-400">★ New personal best!</p>
-            )}
+            <p className="text-2xl font-black">{accuracyMessage(errorMs)}</p>
+            <p className="text-sm text-white/50">
+              You stopped at{' '}
+              <span className="font-semibold text-white/80">{toSec(finalRef.current)}s</span> —
+              off by <span className="font-semibold text-white/80">{toSec(errorMs)}s</span>
+            </p>
           </div>
-
-          <div className="grid w-full max-w-xs grid-cols-3 gap-2">
-            <Stat label="Target" value={`${toSec(target)}s`} />
-            <Stat label="You" value={`${toSec(result.elapsed)}s`} accent />
-            <Stat label="Off by" value={`${toSec(result.errorMs)}s`} />
-          </div>
-
           <button
             onClick={playAgain}
             className="rounded-full bg-indigo-500 px-10 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/30 transition active:scale-95"
@@ -97,19 +164,6 @@ export default function Play() {
           </button>
         </>
       )}
-    </div>
-  )
-}
-
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-      <div
-        className={`text-lg font-bold tabular-nums ${accent ? 'text-indigo-300' : 'text-white'}`}
-      >
-        {value}
-      </div>
-      <div className="mt-0.5 text-[10px] uppercase tracking-wide text-white/40">{label}</div>
     </div>
   )
 }

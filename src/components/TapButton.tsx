@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 
 type TapButtonProps = {
   /** Text/element shown in the center of the button. */
@@ -16,8 +16,7 @@ type TapButtonProps = {
 
 /**
  * The arcade-style green buzzer — TapTimez's signature control.
- * Used as the Play CTA, an auth-screen brand mark, and (Phase 2) the in-game
- * tap target that starts/stops the timer.
+ * Floods white while held (real-time press feedback), springs back on release.
  */
 export default function TapButton({
   label,
@@ -27,6 +26,9 @@ export default function TapButton({
   size,
   ariaLabel,
 }: TapButtonProps) {
+  const [pressed, setPressed] = useState(false)
+  const release = () => setPressed(false)
+
   // size sets the housing diameter; the dome fills the rim-padded interior.
   const housingStyle: CSSProperties | undefined = size
     ? { width: size, height: size }
@@ -43,7 +45,11 @@ export default function TapButton({
         aria-hidden={decorative || undefined}
         tabIndex={decorative ? -1 : undefined}
         aria-label={ariaLabel ?? (typeof label === 'string' ? label : 'Tap')}
-        className={`tap-button${pulsing ? ' tap-button--pulse' : ''}`}
+        onPointerDown={() => setPressed(true)}
+        onPointerUp={release}
+        onPointerLeave={release}
+        onPointerCancel={release}
+        className={`tap-button${pulsing ? ' tap-button--pulse' : ''}${pressed ? ' is-pressed' : ''}`}
       >
         {label != null && <span className="tap-button__label">{label}</span>}
       </button>
