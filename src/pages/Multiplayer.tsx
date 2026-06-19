@@ -6,6 +6,7 @@ import Clock from '../components/Clock.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
 import Splash from '../components/Splash.tsx'
 import PerfectBurst from '../components/PerfectBurst.tsx'
+import ShareButton from '../components/ShareButton.tsx'
 import { fmtTarget, isPerfect, toSec } from '../lib/game.ts'
 import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 import { recordRankedAttempt } from '../lib/attempts.ts'
@@ -622,6 +623,8 @@ function Results({
     .filter((p) => p.state === 'stopped')
     .sort((a, b) => (a.errorMs ?? Infinity) - (b.errorMs ?? Infinity))
 
+  const me = room.players?.[uid]
+
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-8">
       <div className="text-center">
@@ -653,6 +656,15 @@ function Results({
       </div>
 
       <div className="mt-auto flex flex-col gap-2">
+        {me?.state === 'stopped' && me.resultMs != null && (
+          <div className="flex justify-center">
+            <ShareButton
+              targetMs={room.meta.targetMs}
+              elapsedMs={me.resultMs}
+              errorMs={me.errorMs ?? 0}
+            />
+          </div>
+        )}
         {isHost && (
           <button
             onClick={() => rematch(code)}

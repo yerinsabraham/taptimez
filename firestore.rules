@@ -7,12 +7,53 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Player profiles. Public-readable (needed for the leaderboard); a user may
-    // only create/update their own. Score fields are tightened in later phases.
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // A new attempt must be internally consistent and within sane bounds.
+    function validAttempt(a) {
+      return a.uid == request.auth.uid
+        && a.mode in ['single', 'versus']
+        && a.targetMs is int && a.targetMs >= 1000 && a.targetMs <= 600000
+        && a.elapsedMs is int && a.elapsedMs >= 0 && a.elapsedMs <= 3600000
+        && a.errorMs is int
+        && a.errorMs == (a.elapsedMs >= a.targetMs ? a.elapsedMs - a.targetMs : a.targetMs - a.elapsedMs)
+        && a.createdAt == request.time;
+    }
+
+    // A profile stat update may only advance counters by legal amounts:
+    // - identity fields unchanged
+    // - totalAttempts +1
+    // - perfectCount stays or +1 (and lastPerfectAt stamped with server time on a +1)
+    // - bestErrorMs only stays or improves (decreases)
+    function validStatsUpdate(o, n) {
+      return n.username == o.username
+        && n.createdAt == o.createdAt
+        && n.totalAttempts == o.totalAttempts + 1
+        && (
+          n.get('perfectCount', 0) == o.get('perfectCount', 0)
+          || n.get('perfectCount', 0) == o.get('perfectCount', 0) + 1
+        )
+        && (
+          // best stays the same, is being set for the first time, or improves
+          n.bestErrorMs == o.bestErrorMs
+          || o.bestErrorMs == null
+          || (n.bestErrorMs != null && n.bestErrorMs < o.bestErrorMs)
+        )
+        && (
+          // a perfect (+1) must stamp lastPerfectAt with the server time
+          n.get('perfectCount', 0) == o.get('perfectCount', 0)
+          || n.lastPerfectAt == request.time
+        );
+    }
+
+    // Player profiles. Public-readable (leaderboard). A user creates their own,
+    // and may only update it through legal stat advances.
     match /users/{uid} {
       allow read: if true;
-      allow create: if signedIn() && request.auth.uid == uid;
-      allow update: if signedIn() && request.auth.uid == uid;
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) && validStatsUpdate(resource.data, request.resource.data);
       allow delete: if false;
     }
 
@@ -23,11 +64,11 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Game attempts. Public-readable; a user may only create their own, and
-    // attempts are immutable once written.
+    // Game attempts. Public-readable; a user may only create their own valid
+    // attempt, and attempts are immutable once written.
     match /attempts/{id} {
       allow read: if true;
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow create: if signedIn() && validAttempt(request.resource.data);
       allow update, delete: if false;
     }
 
