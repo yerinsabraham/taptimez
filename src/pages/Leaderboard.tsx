@@ -9,10 +9,12 @@ type Row = { id: string; username: string; perfectCount: number; bestErrorMs: nu
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
+type LoadState = 'warming' | 'failed' | null
+
 export default function Leaderboard() {
   const { user } = useAuth()
   const [rows, setRows] = useState<Row[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<LoadState>(null)
 
   useEffect(() => {
     const q = query(
@@ -36,14 +38,32 @@ export default function Leaderboard() {
           .filter((r) => r.perfectCount > 0)
         setRows(list)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error('leaderboard error', err)
-        setError('Could not load the leaderboard. Try again in a moment.')
+        const code = (err as { code?: string })?.code
+        const msg = (err as { message?: string })?.message ?? ''
+        const building = code === 'failed-precondition' || /index/i.test(msg)
+        setError(building ? 'warming' : 'failed')
       })
   }, [])
 
-  if (error) {
-    return <Centered>{error}</Centered>
+  if (error === 'warming') {
+    return (
+      <CenteredHero
+        emoji="⏳"
+        title="Ranks are warming up"
+        subtitle="The leaderboard is getting ready. Check back in a minute."
+      />
+    )
+  }
+  if (error === 'failed') {
+    return (
+      <CenteredHero
+        emoji="⚠️"
+        title="Couldn't load ranks"
+        subtitle="Something went wrong. Please try again shortly."
+      />
+    )
   }
   if (!rows) return <Splash />
 
@@ -55,7 +75,11 @@ export default function Leaderboard() {
       </div>
 
       {rows.length === 0 ? (
-        <Centered>No perfect scores yet. Be the first to nail one!</Centered>
+        <CenteredHero
+          emoji="🎯"
+          title="No ranks yet"
+          subtitle="Nobody has a perfect score yet. Land one to claim the #1 spot!"
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {rows.map((r, i) => {
@@ -93,10 +117,20 @@ export default function Leaderboard() {
   )
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
+function CenteredHero({
+  emoji,
+  title,
+  subtitle,
+}: {
+  emoji: string
+  title: string
+  subtitle: string
+}) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-sm text-white/50">
-      {children}
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center">
+      <div className="text-5xl">{emoji}</div>
+      <div className="text-xl font-black">{title}</div>
+      <p className="max-w-xs text-sm text-white/50">{subtitle}</p>
     </div>
   )
 }
