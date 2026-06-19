@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useAuth } from '../lib/auth.tsx'
 import { logOut } from '../lib/auth-actions.ts'
+import { isSoundEnabled, setSoundEnabled } from '../lib/sound.ts'
 
 function fmtMs(ms: number | null): string {
   return ms == null ? '—' : `${(ms / 1000).toFixed(3)}s`
@@ -7,6 +9,7 @@ function fmtMs(ms: number | null): string {
 
 export default function Profile() {
   const { user, profile } = useAuth()
+  const [soundOn, setSoundOn] = useState(isSoundEnabled)
   if (!profile) return null
 
   const stats = [
@@ -39,6 +42,20 @@ export default function Profile() {
         ))}
       </div>
 
+      <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+        <div>
+          <div className="font-semibold">Sound</div>
+          <div className="text-xs text-white/40">Click + tone while you play</div>
+        </div>
+        <Switch
+          on={soundOn}
+          onChange={(v) => {
+            setSoundEnabled(v)
+            setSoundOn(v)
+          }}
+        />
+      </div>
+
       <button
         onClick={() => logOut()}
         className="mt-auto rounded-xl border border-white/15 bg-white/5 px-4 py-3 font-semibold text-white/80 transition active:scale-[0.98]"
@@ -46,5 +63,20 @@ export default function Profile() {
         Sign out
       </button>
     </div>
+  )
+}
+
+function Switch({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={on}
+      onClick={() => onChange(!on)}
+      className={`relative h-7 w-12 rounded-full transition ${on ? 'bg-emerald-500' : 'bg-white/15'}`}
+    >
+      <span
+        className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${on ? 'left-6' : 'left-1'}`}
+      />
+    </button>
   )
 }

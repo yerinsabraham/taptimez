@@ -1,10 +1,11 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../lib/auth.tsx'
 import TapButton from '../components/TapButton.tsx'
 import Clock from '../components/Clock.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
 import { recordSoloAttempt } from '../lib/attempts.ts'
 import { accuracyMessage, fmtTarget, toSec } from '../lib/game.ts'
+import { clickStart, clickStop, startTone, stopTone } from '../lib/sound.ts'
 
 type Phase = 'ready' | 'running' | 'result'
 type Result = { elapsed: number; errorMs: number; isBest: boolean }
@@ -16,11 +17,20 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
   const [result, setResult] = useState<Result | null>(null)
   const startRef = useRef(0)
 
+  // Sustained tone while the timer runs.
+  useEffect(() => {
+    if (phase === 'running') startTone()
+    else stopTone()
+  }, [phase])
+  useEffect(() => () => stopTone(), [])
+
   const onPress = useCallback(() => {
     if (phase === 'ready') {
+      clickStart()
       startRef.current = performance.now()
       setPhase('running')
     } else if (phase === 'running') {
+      clickStop()
       const elapsed = performance.now() - startRef.current
       const errorMs = Math.abs(Math.round(elapsed) - target)
       setResult({ elapsed, errorMs, isBest: false })

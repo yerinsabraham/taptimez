@@ -5,6 +5,7 @@ import Clock from '../components/Clock.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
 import Splash from '../components/Splash.tsx'
 import { fmtTarget, toSec } from '../lib/game.ts'
+import { clickStart, clickStop, startTone, stopTone } from '../lib/sound.ts'
 import {
   createRoom,
   endGame,
@@ -287,12 +288,21 @@ function PlayerGame({
     if (state === 'idle') startRef.current = 0
   }, [state])
 
+  // Sustained tone while running — works whether we started or the timekeeper did.
+  useEffect(() => {
+    if (state === 'running') startTone()
+    else stopTone()
+  }, [state])
+  useEffect(() => () => stopTone(), [])
+
   const startSelf = () => {
+    clickStart()
     startRef.current = performance.now()
     playerStart(code, uid).catch(() => {})
   }
 
   const stop = () => {
+    clickStop()
     // If we started locally, use the precise local delta; if the timekeeper
     // started us, measure against the server-synced start time.
     const elapsed =
