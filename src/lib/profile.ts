@@ -13,6 +13,9 @@ export type UserProfile = {
   bestElapsedMs: number | null
   totalAttempts: number
   totalWins: number
+  // Leaderboard: count of blind perfect scores, and when the latest one landed.
+  perfectCount: number
+  lastPerfectAt: unknown
 }
 
 const USERNAME_RE = /^[a-z0-9_]{3,15}$/i
@@ -60,6 +63,8 @@ export async function claimUsernameAndCreateProfile(
       bestElapsedMs: null,
       totalAttempts: 0,
       totalWins: 0,
+      perfectCount: 0,
+      lastPerfectAt: null,
     } satisfies UserProfile)
   })
 }

@@ -1,28 +1,37 @@
 import { collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase.ts'
+import { isPerfect } from './game.ts'
 import type { UserProfile } from './profile.ts'
+
+export type AttemptMode = 'single' | 'versus'
 
 export type AttemptResult = {
   errorMs: number
   isBest: boolean
+  perfect: boolean
 }
 
 /**
- * Atomically records a solo attempt and updates the player's profile:
+ * Atomically records a "blind" ranked attempt (no clock) and updates the
+ * player's profile:
  * - writes an immutable doc to `attempts`
  * - increments totalAttempts
- * - updates bestErrorMs / bestElapsedMs when this is a new personal best
+ * - updates bestErrorMs / bestElapsedMs on a new personal best
+ * - on a perfect score, increments perfectCount and stamps lastPerfectAt
+ *   (the leaderboard ranks by perfectCount desc, then lastPerfectAt asc)
  *
- * elapsedMs is measured on the player's own device (performance.now delta),
- * so the score is network-independent and fair.
+ * elapsedMs is measured on the player's own device, so the score is
+ * network-independent and fair.
  */
-export async function recordSoloAttempt(
+export async function recordRankedAttempt(
   uid: string,
   targetMs: number,
   elapsedMs: number,
+  mode: AttemptMode,
 ): Promise<AttemptResult> {
   const elapsed = Math.round(elapsedMs)
   const errorMs = Math.abs(elapsed - targetMs)
+  const perfect = isPerfect(errorMs)
   const attemptRef = doc(collection(db, 'attempts'))
   const userRef = doc(db, 'users', uid)
 
@@ -34,18 +43,26 @@ export async function recordSoloAttempt(
 
     tx.set(attemptRef, {
       uid,
-      mode: 'solo',
+      mode,
       targetMs,
       elapsedMs: elapsed,
       errorMs,
       createdAt: serverTimestamp(),
     })
 
-    tx.update(userRef, {
+    const update: Record<string, unknown> = {
       totalAttempts: (data.totalAttempts ?? 0) + 1,
-      ...(isBest ? { bestErrorMs: errorMs, bestElapsedMs: elapsed } : {}),
-    })
+    }
+    if (isBest) {
+      update.bestErrorMs = errorMs
+      update.bestElapsedMs = elapsed
+    }
+    if (perfect) {
+      update.perfectCount = (data.perfectCount ?? 0) + 1
+      update.lastPerfectAt = serverTimestamp()
+    }
+    tx.update(userRef, update)
 
-    return { errorMs, isBest }
+    return { errorMs, isBest, perfect }
   })
 }

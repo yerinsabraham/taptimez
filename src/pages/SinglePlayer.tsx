@@ -4,7 +4,7 @@ import TapButton from '../components/TapButton.tsx'
 import Clock from '../components/Clock.tsx'
 import TargetStepper from '../components/TargetStepper.tsx'
 import PerfectBurst from '../components/PerfectBurst.tsx'
-import { recordSoloAttempt } from '../lib/attempts.ts'
+import { recordRankedAttempt } from '../lib/attempts.ts'
 import { accuracyMessage, fmtTarget, isPerfect, toSec } from '../lib/game.ts'
 import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 
@@ -43,7 +43,7 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
         feedbackStop()
       }
       if (user) {
-        recordSoloAttempt(user.uid, target, elapsed)
+        recordRankedAttempt(user.uid, target, elapsed, 'single')
           .then((r) => setResult({ elapsed, errorMs: r.errorMs, isBest: r.isBest }))
           .catch((err) => console.error('failed to save attempt', err))
       }

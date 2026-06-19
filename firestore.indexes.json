@@ -1,4 +1,13 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "perfectCount", "order": "DESCENDING" },
+        { "fieldPath": "lastPerfectAt", "order": "ASCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

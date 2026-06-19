@@ -7,6 +7,7 @@ import Splash from '../components/Splash.tsx'
 import PerfectBurst from '../components/PerfectBurst.tsx'
 import { fmtTarget, isPerfect, toSec } from '../lib/game.ts'
 import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
+import { recordRankedAttempt } from '../lib/attempts.ts'
 import {
   createRoom,
   endGame,
@@ -316,6 +317,8 @@ function PlayerGame({
     const ms = Math.max(0, Math.round(elapsed))
     const err = Math.abs(ms - target)
     playerStop(code, uid, ms, err).catch(() => {})
+    // Record to the player's profile so multiplayer perfects count on the leaderboard.
+    recordRankedAttempt(uid, target, ms, 'versus').catch(() => {})
     startRef.current = 0
     if (isPerfect(err)) {
       feedbackPerfect()

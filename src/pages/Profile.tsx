@@ -25,10 +25,10 @@ export default function Profile() {
   if (!profile) return null
 
   const stats = [
+    { label: 'Perfect scores', value: String(profile.perfectCount ?? 0) },
     { label: 'Best accuracy', value: profile.bestErrorMs == null ? '--' : `±${fmtMs(profile.bestErrorMs)}` },
     { label: 'Best stop', value: fmtMs(profile.bestElapsedMs) },
     { label: 'Attempts', value: String(profile.totalAttempts) },
-    { label: 'Wins', value: String(profile.totalWins) },
   ]
 
   return (
