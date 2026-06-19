@@ -342,19 +342,19 @@ function PlayerGame({
       ) : state === 'running' ? (
         <>
           {/* No clock for the player — the timekeeper holds the time. */}
-          <Clock ms={0} blank />
+          <Clock ms={0} hidden />
           <TapButton label="STOP" onPress={stop} />
           <p className="text-sm text-white/40">Feel the time. Tap STOP at the target.</p>
         </>
       ) : hasTimekeeper ? (
         <>
-          <Clock ms={0} blank />
+          <Clock ms={0} hidden />
           <TapButton label="WAIT" />
           <p className="text-sm text-white/40">Waiting for the timekeeper to start your clock…</p>
         </>
       ) : (
         <>
-          <Clock ms={0} blank />
+          <Clock ms={0} hidden />
           <TapButton label="START" onPress={startSelf} />
           <p className="text-sm text-white/40">Tap START, then STOP at the target.</p>
         </>
@@ -415,7 +415,7 @@ function TimekeeperGame({ room, code, offset }: { room: Room; code: string; offs
                     : 'ready'}
               </span>
             </div>
-            <Clock ms={liveMs(p)} blank={p.state === 'idle'} />
+            <Clock ms={liveMs(p)} hidden={p.state === 'idle'} />
             {p.state === 'idle' && (
               <button
                 onClick={() => playerStart(code, id).catch(() => {})}

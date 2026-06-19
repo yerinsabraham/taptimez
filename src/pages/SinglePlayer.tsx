@@ -76,8 +76,8 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
 
       {phase !== 'result' ? (
         <>
-          {/* No clock — this is the real skill challenge. */}
-          <Clock ms={0} blank />
+          {/* No clock for the player — this is the real skill challenge. */}
+          <Clock ms={0} hidden />
           <TapButton label={phase === 'ready' ? 'START' : 'STOP'} onPress={onPress} />
           <p className="text-sm text-white/40">
             {phase === 'ready'
