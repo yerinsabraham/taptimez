@@ -5,7 +5,13 @@ import { useAuth } from '../lib/auth.tsx'
 import Splash from '../components/Splash.tsx'
 import type { UserProfile } from '../lib/profile.ts'
 
-type Row = { id: string; username: string; perfectCount: number; bestErrorMs: number | null }
+type Row = {
+  id: string
+  username: string
+  perfectCount: number
+  bestErrorMs: number | null
+  flagged?: boolean
+}
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
@@ -33,9 +39,10 @@ export default function Leaderboard() {
               username: u.username,
               perfectCount: u.perfectCount ?? 0,
               bestErrorMs: u.bestErrorMs,
+              flagged: (u as { flagged?: boolean }).flagged,
             }
           })
-          .filter((r) => r.perfectCount > 0)
+          .filter((r) => r.perfectCount > 0 && !r.flagged)
         setRows(list)
       })
       .catch((err: unknown) => {
