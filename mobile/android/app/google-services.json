@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "929786167291",
+    "firebase_url": "https://timitiming-21d9a-default-rtdb.firebaseio.com",
+    "project_id": "timitiming-21d9a",
+    "storage_bucket": "timitiming-21d9a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:929786167291:android:cfd553f1bc3c719fd5155e",
+        "android_client_info": {
+          "package_name": "com.creovine.taptimez"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "929786167291-692l5t7e5qdiaf0rmljfof3q9c36baei.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtJFBZMxL5nZStwSBtP70REqVJdXVkFxo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "929786167291-692l5t7e5qdiaf0rmljfof3q9c36baei.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "929786167291-i9h31runi0qpa5ui4uu0r9ksfrv9juof.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.creovine.taptimez"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

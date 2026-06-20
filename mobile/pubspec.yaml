@@ -32,6 +32,11 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
+  firebase_core: ^4.11.0
+  firebase_auth: ^6.5.3
+  cloud_firestore: ^6.6.0
+  firebase_database: ^12.4.3
+  firebase_analytics: ^12.4.3
 
 dev_dependencies:
   flutter_test:
@@ -58,7 +63,7 @@ flutter:
   fonts:
     - family: DSEG7Classic
       fonts:
-        - asset: assets/fonts/DSEG7Classic-Bold.woff2
+        - asset: assets/fonts/DSEG7Classic-Bold.ttf
           weight: 700
 
   # To add assets to your application, add an assets section, like this:
