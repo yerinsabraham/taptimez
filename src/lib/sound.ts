@@ -84,7 +84,8 @@ function getCtx(): AudioContext | null {
     if (!AC) return null
     ctx = new AC()
   }
-  if (ctx.state === 'suspended') void ctx.resume()
+  // 'suspended' (autoplay/inactivity) or 'interrupted' (Safari) -> wake it up.
+  if (ctx.state !== 'running') void ctx.resume()
   return ctx
 }
 
@@ -107,24 +108,24 @@ function getGraph(c: AudioContext): { master: GainNode; delay: DelayNode } {
 }
 
 let unlockBound = false
-/** Resume the AudioContext on the first user gesture so the first beep plays. */
+/**
+ * Keep the AudioContext alive. Browsers suspend it after the tab is backgrounded,
+ * the screen locks, or a period of inactivity, which silences all sound. We
+ * resume it on every interaction (kept permanently) and when the tab refocuses.
+ */
 export function initSound(): void {
   if (typeof window === 'undefined' || unlockBound) return
   unlockBound = true
-  const unlock = () => {
-    const c = getCtx()
-    if (!c) return
-    if (c.state !== 'running') {
-      void c.resume()
-      return
-    }
-    window.removeEventListener('pointerdown', unlock)
-    window.removeEventListener('keydown', unlock)
-    window.removeEventListener('touchstart', unlock)
+  const resume = () => {
+    const c = ctx ?? getCtx()
+    if (c && c.state !== 'running') void c.resume()
   }
-  window.addEventListener('pointerdown', unlock)
-  window.addEventListener('keydown', unlock)
-  window.addEventListener('touchstart', unlock)
+  window.addEventListener('pointerdown', resume)
+  window.addEventListener('keydown', resume)
+  window.addEventListener('touchstart', resume)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) resume()
+  })
 }
 
 /** One bright square-wave note, optionally fed into the echo. */

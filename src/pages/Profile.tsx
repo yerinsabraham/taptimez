@@ -26,8 +26,8 @@ export default function Profile() {
 
   const stats = [
     { label: 'Perfect scores', value: String(profile.perfectCount ?? 0) },
-    { label: 'Best accuracy', value: profile.bestErrorMs == null ? '--' : `±${fmtMs(profile.bestErrorMs)}` },
-    { label: 'Best stop', value: fmtMs(profile.bestElapsedMs) },
+    { label: 'Closest ever', value: profile.bestErrorMs == null ? '--' : `±${fmtMs(profile.bestErrorMs)}` },
+    { label: 'Best-hit time', value: fmtMs(profile.bestElapsedMs) },
     { label: 'Attempts', value: String(profile.totalAttempts) },
   ]
 
@@ -45,13 +45,19 @@ export default function Profile() {
         <p className="text-sm text-white/40">{user?.email}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-            <div className="text-xl font-bold">{s.value}</div>
-            <div className="mt-1 text-xs text-white/40">{s.label}</div>
-          </div>
-        ))}
+      <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-2 gap-3">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
+              <div className="text-xl font-bold">{s.value}</div>
+              <div className="mt-1 text-xs text-white/40">{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <p className="px-1 text-[11px] leading-relaxed text-white/35">
+          Closest ever is the smallest gap you've ever hit (only changes when you beat it).
+          Best-hit time is the time you stopped on that closest attempt.
+        </p>
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-4">
