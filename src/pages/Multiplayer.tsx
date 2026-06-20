@@ -467,12 +467,21 @@ function PlayerGame({
   const me = room.players?.[uid]
   const state = me?.state ?? 'idle'
   const startRef = useRef(0)
+  const lastTapRef = useRef(0)
   const [showPerfect, setShowPerfect] = useState(false)
 
   // Reset the local start mark whenever we're back to idle (e.g. after a rematch).
   useEffect(() => {
     if (state === 'idle') startRef.current = 0
   }, [state])
+
+  // True if this tap is too soon after the last (accidental double-tap).
+  const tooSoon = () => {
+    const now = performance.now()
+    if (now - lastTapRef.current < 350) return true
+    lastTapRef.current = now
+    return false
+  }
 
   // Sustained tone while running — works whether we started or the timekeeper did.
   useEffect(() => {
@@ -482,12 +491,14 @@ function PlayerGame({
   useEffect(() => () => stopTone(), [])
 
   const startSelf = () => {
+    if (tooSoon()) return
     feedbackStart()
     startRef.current = performance.now()
     playerStart(code, uid).catch(() => {})
   }
 
   const stop = () => {
+    if (tooSoon()) return
     // If we started locally, use the precise local delta; if the timekeeper
     // started us, measure against the server-synced start time.
     const elapsed =
@@ -657,6 +668,13 @@ function Results({
   const me = room.players?.[uid]
   const keepScore = room.meta.keepScore === true
 
+  // Brief cooldown so an accidental tap can't skip past the results.
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 1500)
+    return () => clearTimeout(t)
+  }, [])
+
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-8">
       <div className="text-center">
@@ -704,7 +722,8 @@ function Results({
         {isHost && (
           <button
             onClick={() => rematch(code)}
-            className="rounded-xl bg-indigo-500 px-4 py-3 font-bold text-white transition active:scale-[0.98]"
+            disabled={!ready}
+            className="rounded-xl bg-indigo-500 px-4 py-3 font-bold text-white transition active:scale-[0.98] disabled:opacity-40"
           >
             Rematch
           </button>

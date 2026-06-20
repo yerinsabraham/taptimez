@@ -16,11 +16,21 @@ export default function Practice({ onBack }: { onBack: () => void }) {
   const [displayMs, setDisplayMs] = useState(0)
   const [showClock, setShowClock] = useState(true)
   const [showPerfect, setShowPerfect] = useState(false)
+  const [restartReady, setRestartReady] = useState(false)
   const startRef = useRef(0)
   const rafRef = useRef(0)
   const finalRef = useRef(0)
+  const lastTapRef = useRef(0)
 
   useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
+
+  // Cooldown so an accidental tap right after stopping can't skip the result.
+  useEffect(() => {
+    if (phase !== 'result') return
+    setRestartReady(false)
+    const t = setTimeout(() => setRestartReady(true), 1500)
+    return () => clearTimeout(t)
+  }, [phase])
 
   // Sustained tone while the timer runs.
   useEffect(() => {
@@ -30,6 +40,11 @@ export default function Practice({ onBack }: { onBack: () => void }) {
   useEffect(() => () => stopTone(), [])
 
   const onPress = useCallback(() => {
+    // Ignore an accidental quick double-tap (e.g. a shaky finger).
+    const now = performance.now()
+    if (now - lastTapRef.current < 350) return
+    lastTapRef.current = now
+
     if (phase === 'ready') {
       feedbackStart()
       startRef.current = performance.now()
@@ -113,9 +128,10 @@ export default function Practice({ onBack }: { onBack: () => void }) {
           <div className="flex w-full max-w-xs flex-col gap-2">
             <button
               onClick={playAgain}
-              className="rounded-full bg-indigo-500 px-10 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/30 transition active:scale-95"
+              disabled={!restartReady}
+              className="rounded-full bg-indigo-500 px-10 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/30 transition active:scale-95 disabled:opacity-40 disabled:active:scale-100"
             >
-              Play again
+              {restartReady ? 'Play again' : 'Read your score…'}
             </button>
             <ShareButton targetMs={target} elapsedMs={finalRef.current} errorMs={errorMs} />
           </div>

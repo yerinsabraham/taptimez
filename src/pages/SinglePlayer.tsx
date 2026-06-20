@@ -18,8 +18,10 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
   const [phase, setPhase] = useState<Phase>('ready')
   const [result, setResult] = useState<Result | null>(null)
   const [showPerfect, setShowPerfect] = useState(false)
+  const [restartReady, setRestartReady] = useState(false)
   const [history, setHistory] = useState<{ target: number; elapsed: number; errorMs: number }[]>([])
   const startRef = useRef(0)
+  const lastTapRef = useRef(0)
 
   // Sustained tone while the timer runs.
   useEffect(() => {
@@ -28,7 +30,19 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
   }, [phase])
   useEffect(() => () => stopTone(), [])
 
+  // Cooldown so an accidental tap right after stopping can't skip the result.
+  useEffect(() => {
+    if (phase !== 'result') return
+    setRestartReady(false)
+    const t = setTimeout(() => setRestartReady(true), 1500)
+    return () => clearTimeout(t)
+  }, [phase])
+
   const onPress = useCallback(() => {
+    const now = performance.now()
+    if (now - lastTapRef.current < 350) return
+    lastTapRef.current = now
+
     if (phase === 'ready') {
       feedbackStart()
       startRef.current = performance.now()
@@ -106,9 +120,10 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
             <div className="flex w-full max-w-xs flex-col gap-2">
               <button
                 onClick={playAgain}
-                className="rounded-full bg-indigo-500 px-10 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/30 transition active:scale-95"
+                disabled={!restartReady}
+                className="rounded-full bg-indigo-500 px-10 py-4 text-lg font-bold text-white shadow-lg shadow-indigo-500/30 transition active:scale-95 disabled:opacity-40 disabled:active:scale-100"
               >
-                Play again
+                {restartReady ? 'Play again' : 'Read your score…'}
               </button>
               <ShareButton targetMs={target} elapsedMs={result.elapsed} errorMs={result.errorMs} />
             </div>
