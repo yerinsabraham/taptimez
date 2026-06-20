@@ -4,6 +4,7 @@ import {
   onValue,
   ref,
   remove,
+  runTransaction,
   serverTimestamp,
   set,
   update,
@@ -26,9 +27,19 @@ export type RoomPlayer = {
 export type Participant = { name: string; role: Role }
 
 export type Room = {
-  meta: { hostUid: string; targetMs: number; status: RoomStatus; createdAt: number }
+  meta: {
+    hostUid: string
+    targetMs: number
+    status: RoomStatus
+    createdAt: number
+    // Series scoreboard (ephemeral): wins are tallied across rematches.
+    keepScore?: boolean
+    round?: number
+    scoredRound?: number
+  }
   participants?: Record<string, Participant>
   players?: Record<string, RoomPlayer>
+  series?: Record<string, number>
 }
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no ambiguous chars
@@ -55,6 +66,7 @@ export async function createRoom(
   name: string,
   role: Role,
   targetMs: number,
+  keepScore = false,
 ): Promise<string> {
   for (let attempt = 0; attempt < 6; attempt++) {
     const code = genCode()
@@ -62,7 +74,15 @@ export async function createRoom(
     const snap = await get(roomRef)
     if (snap.exists()) continue
     await set(roomRef, {
-      meta: { hostUid: uid, targetMs, status: 'lobby', createdAt: serverTimestamp() },
+      meta: {
+        hostUid: uid,
+        targetMs,
+        status: 'lobby',
+        createdAt: serverTimestamp(),
+        keepScore,
+        round: 1,
+        scoredRound: 0,
+      },
       participants: { [uid]: { name, role } },
       ...(role === 'player' ? { players: { [uid]: freshPlayer(name) } } : {}),
     })
@@ -93,6 +113,27 @@ export async function joinRoom(
 export async function leaveRoom(code: string, uid: string): Promise<void> {
   await remove(ref(rtdb, `rooms/${code}/participants/${uid}`))
   await remove(ref(rtdb, `rooms/${code}/players/${uid}`))
+  // If nobody's left, delete the whole room (and its ephemeral series).
+  const snap = await get(ref(rtdb, `rooms/${code}/participants`))
+  if (!snap.exists()) await remove(ref(rtdb, `rooms/${code}`))
+}
+
+/**
+ * Award a round win to the closest player, exactly once per round.
+ * Claims the round via a transaction so it can't be double-counted.
+ */
+export async function awardRoundWin(
+  code: string,
+  winnerUid: string,
+  roundNo: number,
+): Promise<void> {
+  const scoredRef = ref(rtdb, `rooms/${code}/meta/scoredRound`)
+  const res = await runTransaction(scoredRef, (cur: number | null) =>
+    (cur ?? 0) >= roundNo ? undefined : roundNo,
+  )
+  if (!res.committed) return
+  const winsRef = ref(rtdb, `rooms/${code}/series/${winnerUid}`)
+  await runTransaction(winsRef, (cur: number | null) => (cur ?? 0) + 1)
 }
 
 export async function startGame(code: string): Promise<void> {
@@ -103,10 +144,14 @@ export async function endGame(code: string): Promise<void> {
   await update(ref(rtdb, `rooms/${code}/meta`), { status: 'done' })
 }
 
-/** Reset every player and start a fresh round. */
+/** Reset every player and start a fresh round (incrementing the series round). */
 export async function rematch(code: string): Promise<void> {
-  const playersSnap = await get(ref(rtdb, `rooms/${code}/players`))
-  const updates: Record<string, unknown> = { 'meta/status': 'playing' }
+  const [playersSnap, metaSnap] = await Promise.all([
+    get(ref(rtdb, `rooms/${code}/players`)),
+    get(ref(rtdb, `rooms/${code}/meta`)),
+  ])
+  const round = (metaSnap.val()?.round ?? 1) + 1
+  const updates: Record<string, unknown> = { 'meta/status': 'playing', 'meta/round': round }
   playersSnap.forEach((child) => {
     updates[`players/${child.key}/state`] = 'idle'
     updates[`players/${child.key}/startedAt`] = null

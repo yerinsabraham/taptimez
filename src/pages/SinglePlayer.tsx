@@ -18,6 +18,7 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
   const [phase, setPhase] = useState<Phase>('ready')
   const [result, setResult] = useState<Result | null>(null)
   const [showPerfect, setShowPerfect] = useState(false)
+  const [history, setHistory] = useState<{ target: number; elapsed: number; errorMs: number }[]>([])
   const startRef = useRef(0)
 
   // Sustained tone while the timer runs.
@@ -36,6 +37,7 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
       const elapsed = performance.now() - startRef.current
       const errorMs = Math.abs(Math.round(elapsed) - target)
       setResult({ elapsed, errorMs, isBest: false })
+      setHistory((h) => [{ target, elapsed, errorMs }, ...h])
       setPhase('result')
       if (isPerfect(errorMs)) {
         feedbackPerfect()
@@ -110,9 +112,50 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
               </button>
               <ShareButton targetMs={target} elapsedMs={result.elapsed} errorMs={result.errorMs} />
             </div>
+            {history.length > 1 && <SessionHistory history={history} />}
           </>
         )
       )}
+    </div>
+  )
+}
+
+function SessionHistory({
+  history,
+}: {
+  history: { target: number; elapsed: number; errorMs: number }[]
+}) {
+  const perfects = history.filter((h) => isPerfect(h.errorMs)).length
+  const best = Math.min(...history.map((h) => h.errorMs))
+  return (
+    <div className="w-full max-w-xs rounded-2xl border border-white/10 bg-white/5 p-4 text-left">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs uppercase tracking-[0.2em] text-white/40">This session</p>
+        <p className="text-[11px] text-white/40">
+          {history.length} rounds · {perfects} perfect · best ±{toSec(best)}s
+        </p>
+      </div>
+      <div className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+        {history.map((h, i) => {
+          const perfect = isPerfect(h.errorMs)
+          return (
+            <div key={i} className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm">
+              <span className="flex items-center gap-2">
+                <span className="w-5 text-center text-xs font-black text-white/40">
+                  {history.length - i}
+                </span>
+                <span className="tabular-nums">{toSec(h.elapsed)}s</span>
+                <span className="text-xs text-white/30">to {fmtTarget(h.target)}</span>
+              </span>
+              <span
+                className={`text-xs tabular-nums ${perfect ? 'font-bold text-emerald-400' : 'text-white/50'}`}
+              >
+                {perfect ? '🎯 perfect' : `±${toSec(h.errorMs)}s`}
+              </span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

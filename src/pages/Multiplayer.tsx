@@ -13,6 +13,7 @@ import { recordRankedAttempt } from '../lib/attempts.ts'
 import { sendChallenge, setChallengeStatus, subscribeChallenge } from '../lib/challenges.ts'
 import { subscribeOnline, type OnlineUser } from '../lib/presence.ts'
 import {
+  awardRoundWin,
   createRoom,
   endGame,
   joinRoom,
@@ -62,6 +63,18 @@ export function RoomScreen() {
     if (!hasTimekeeper && allStopped) endGame(code).catch(() => {})
   }, [room, uid, code])
 
+  // Host tallies the series score once per finished round (keep-score on).
+  useEffect(() => {
+    if (!room || !uid || !code) return
+    if (room.meta?.status !== 'done' || !room.meta.keepScore || room.meta.hostUid !== uid) return
+    const round = room.meta.round ?? 1
+    if ((room.meta.scoredRound ?? 0) >= round) return
+    const stopped = Object.entries(room.players ?? {}).filter(([, p]) => p.state === 'stopped')
+    if (stopped.length === 0) return
+    const winner = stopped.sort((a, b) => (a[1].errorMs ?? Infinity) - (b[1].errorMs ?? Infinity))[0][0]
+    awardRoundWin(code, winner, round).catch(() => {})
+  }, [room, uid, code])
+
   if (!match || !user || !profile || !code || !role) return null
 
   const exit = () => {
@@ -97,6 +110,7 @@ export function RoomEntry({ role, onExit }: { role: Role; onExit: () => void }) 
   const tabs = role === 'player' ? (['online', 'create', 'join'] as const) : (['create', 'join'] as const)
   const [tab, setTab] = useState<(typeof tabs)[number]>(tabs[0])
   const [target, setTarget] = useState(5000)
+  const [keepScore, setKeepScore] = useState(false)
   const [joinCode, setJoinCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -117,7 +131,7 @@ export function RoomEntry({ role, onExit }: { role: Role; onExit: () => void }) 
 
   const create = () =>
     run(async () => {
-      const code = await createRoom(user.uid, name, role, target)
+      const code = await createRoom(user.uid, name, role, target, keepScore)
       enter(code, role)
     })
 
@@ -163,6 +177,23 @@ export function RoomEntry({ role, onExit }: { role: Role; onExit: () => void }) 
         <div className="flex flex-col items-center gap-5">
           <p className="text-xs uppercase tracking-[0.2em] text-white/40">Target time</p>
           <TargetStepper targetMs={target} onChange={setTarget} />
+          <button
+            type="button"
+            onClick={() => setKeepScore((s) => !s)}
+            className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+          >
+            <span className="text-left">
+              <span className="block font-semibold">Keep score</span>
+              <span className="block text-xs text-white/40">Tally wins across rematches</span>
+            </span>
+            <span
+              className={`relative h-7 w-12 shrink-0 rounded-full transition ${keepScore ? 'bg-emerald-500' : 'bg-white/15'}`}
+            >
+              <span
+                className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${keepScore ? 'left-6' : 'left-1'}`}
+              />
+            </span>
+          </button>
           <button
             disabled={busy}
             onClick={create}
@@ -624,13 +655,18 @@ function Results({
     .sort((a, b) => (a.errorMs ?? Infinity) - (b.errorMs ?? Infinity))
 
   const me = room.players?.[uid]
+  const keepScore = room.meta.keepScore === true
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-8">
       <div className="text-center">
         <h2 className="text-2xl font-black">Results</h2>
-        <p className="mt-1 text-sm text-white/50">Target {fmtTarget(room.meta.targetMs)} · closest wins</p>
+        <p className="mt-1 text-sm text-white/50">
+          Round {room.meta.round ?? 1} · target {fmtTarget(room.meta.targetMs)} · closest wins
+        </p>
       </div>
+
+      {keepScore && <Standings room={room} uid={uid} />}
 
       <div className="flex flex-col gap-2">
         {ranked.map((p, i) => (
@@ -679,6 +715,47 @@ function Results({
         >
           Leave game
         </button>
+      </div>
+    </div>
+  )
+}
+
+/* ---------------- Series standings (ephemeral) ---------------- */
+
+function Standings({ room, uid }: { room: Room; uid: string }) {
+  const series = room.series ?? {}
+  const names: Record<string, string> = {}
+  for (const [id, p] of Object.entries(room.participants ?? {})) names[id] = p.name
+  for (const [id, p] of Object.entries(room.players ?? {})) names[id] = p.name
+
+  const ids = new Set<string>([...Object.keys(series), ...Object.keys(room.players ?? {})])
+  const rows = [...ids]
+    .map((id) => ({ id, name: names[id] ?? 'Player', wins: series[id] ?? 0 }))
+    .sort((a, b) => b.wins - a.wins)
+  if (rows.length === 0) return null
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="mb-2 text-xs uppercase tracking-[0.2em] text-white/40">Series standings</p>
+      <div className="flex flex-col gap-1.5">
+        {rows.map((r, i) => (
+          <div
+            key={r.id}
+            className={`flex items-center justify-between rounded-lg px-3 py-2 ${i === 0 ? 'bg-emerald-400/10' : ''}`}
+          >
+            <span className="flex items-center gap-2">
+              <span className="w-4 text-center text-xs font-black text-white/40">{i + 1}</span>
+              <span className="font-semibold">
+                {r.name}
+                {r.id === uid && <span className="ml-2 text-xs text-indigo-300">you</span>}
+              </span>
+            </span>
+            <span className="font-black tabular-nums text-emerald-400">
+              {r.wins}
+              <span className="ml-1 text-[10px] text-white/40">{r.wins === 1 ? 'win' : 'wins'}</span>
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )
