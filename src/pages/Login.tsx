@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { authErrorMessage, emailSignIn, emailSignUp, googleSignIn } from '../lib/auth-actions.ts'
+import { track } from '../lib/analytics.ts'
 import TapButton from '../components/TapButton.tsx'
 
 export default function Login() {
@@ -16,6 +17,7 @@ export default function Login() {
     try {
       if (mode === 'signin') await emailSignIn(email, password)
       else await emailSignUp(email, password)
+      track(mode === 'signin' ? 'login' : 'sign_up', { method: 'password' })
       // On success the auth listener takes over and re-renders the app.
     } catch (err) {
       setError(authErrorMessage(err))
@@ -28,6 +30,7 @@ export default function Login() {
     setBusy(true)
     try {
       await googleSignIn()
+      track('login', { method: 'google' })
     } catch (err) {
       setError(authErrorMessage(err))
       setBusy(false)

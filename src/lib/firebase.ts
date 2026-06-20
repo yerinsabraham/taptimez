@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
-import { getDatabase } from 'firebase/database'
 
 // Firebase web config. These values are NOT secret (they ship in the client
 // bundle by design); real protection comes from Firebase Auth + Security Rules.
@@ -14,6 +13,7 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
 export const app = initializeApp(firebaseConfig)
@@ -24,8 +24,8 @@ export const auth = getAuth(app)
 // Cloud Firestore — persistent data: profiles, attempts, leaderboard
 export const db = getFirestore(app)
 
-// Realtime Database — live multiplayer rooms (Phase 4)
-export const rtdb = getDatabase(app)
+// Realtime Database lives in ./rtdb.ts so its SDK is only bundled with the
+// multiplayer/presence code (kept out of the initial load).
 
 /** True only when every required Firebase env var is present. */
 export const firebaseConfigured = Boolean(

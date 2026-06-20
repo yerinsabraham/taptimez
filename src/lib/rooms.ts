@@ -10,7 +10,7 @@ import {
   update,
   type Unsubscribe,
 } from 'firebase/database'
-import { rtdb } from './firebase.ts'
+import { rtdb } from './rtdb.ts'
 
 export type Role = 'player' | 'timekeeper'
 export type RoomStatus = 'lobby' | 'playing' | 'done'

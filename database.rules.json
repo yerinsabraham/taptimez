@@ -5,7 +5,7 @@
     "rooms": {
       "$code": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        ".write": "auth != null && ( !data.exists() || data.child('participants').child(auth.uid).exists() || newData.child('participants').child(auth.uid).exists() || (!newData.exists() && !data.child('participants').exists()) )"
       }
     },
     "presence": {

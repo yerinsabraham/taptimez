@@ -9,7 +9,7 @@ import {
   set,
   type Unsubscribe,
 } from 'firebase/database'
-import { rtdb } from './firebase.ts'
+import { rtdb } from './rtdb.ts'
 
 export type PresenceStatus = 'online' | 'playing'
 

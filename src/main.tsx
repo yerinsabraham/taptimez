@@ -5,8 +5,10 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './lib/auth.tsx'
 import { initSound } from './lib/sound.ts'
+import { initAnalytics } from './lib/analytics.ts'
 
 initSound()
+initAnalytics()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

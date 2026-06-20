@@ -6,6 +6,7 @@ import TargetStepper from '../components/TargetStepper.tsx'
 import PerfectBurst from '../components/PerfectBurst.tsx'
 import ShareButton from '../components/ShareButton.tsx'
 import { accuracyMessage, fmtTarget, isPerfect, toSec } from '../lib/game.ts'
+import { track } from '../lib/analytics.ts'
 import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 
 type Phase = 'ready' | 'running' | 'result'
@@ -62,6 +63,12 @@ export default function Practice({ onBack }: { onBack: () => void }) {
       const err = Math.abs(Math.round(elapsed) - target)
       setDisplayMs(elapsed)
       setPhase('result')
+      track('round_complete', {
+        mode: 'practice',
+        target_s: target / 1000,
+        error_ms: Math.round(err),
+        perfect: isPerfect(err),
+      })
       if (isPerfect(err)) {
         feedbackPerfect()
         setShowPerfect(true)
@@ -72,6 +79,7 @@ export default function Practice({ onBack }: { onBack: () => void }) {
   }, [phase, target])
 
   const playAgain = () => {
+    track('play_again', { mode: 'practice' })
     setDisplayMs(0)
     setPhase('ready')
   }

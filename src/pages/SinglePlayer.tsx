@@ -7,6 +7,7 @@ import PerfectBurst from '../components/PerfectBurst.tsx'
 import ShareButton from '../components/ShareButton.tsx'
 import { recordRankedAttempt } from '../lib/attempts.ts'
 import { accuracyMessage, fmtTarget, isPerfect, toSec } from '../lib/game.ts'
+import { track } from '../lib/analytics.ts'
 import { feedbackPerfect, feedbackStart, feedbackStop, startTone, stopTone } from '../lib/sound.ts'
 
 type Phase = 'ready' | 'running' | 'result'
@@ -53,6 +54,12 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
       setResult({ elapsed, errorMs, isBest: false })
       setHistory((h) => [{ target, elapsed, errorMs }, ...h])
       setPhase('result')
+      track('round_complete', {
+        mode: 'single',
+        target_s: target / 1000,
+        error_ms: Math.round(errorMs),
+        perfect: isPerfect(errorMs),
+      })
       if (isPerfect(errorMs)) {
         feedbackPerfect()
         setShowPerfect(true)
@@ -68,6 +75,7 @@ export default function SinglePlayer({ onBack }: { onBack: () => void }) {
   }, [phase, target, user])
 
   const playAgain = () => {
+    track('play_again', { mode: 'single' })
     setResult(null)
     setPhase('ready')
   }

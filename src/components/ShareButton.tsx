@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../lib/auth.tsx'
-import { resultShareText, shareResult, type ShareCardData } from '../lib/share.ts'
+import { track } from '../lib/analytics.ts'
+import type { ShareCardData } from '../lib/share.ts'
 
 /** Share a result card image, plus a "Copy link" that copies a pasteable text link. */
 export default function ShareButton({
@@ -23,7 +24,10 @@ export default function ShareButton({
   const onShare = async () => {
     setBusy(true)
     setShareLabel('Preparing…')
+    // Load the canvas/share code on demand (keeps it out of the initial bundle).
+    const { shareResult } = await import('../lib/share.ts')
     const outcome = await shareResult(data)
+    track('share_result', { method: outcome })
     setShareLabel(
       outcome === 'downloaded'
         ? 'Image saved'
@@ -39,7 +43,9 @@ export default function ShareButton({
 
   const onCopy = async () => {
     try {
+      const { resultShareText } = await import('../lib/share.ts')
       await navigator.clipboard.writeText(resultShareText(data))
+      track('share_result', { method: 'copied' })
       setCopyLabel('Link copied!')
     } catch {
       setCopyLabel('Copy failed')

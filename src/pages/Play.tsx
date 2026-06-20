@@ -2,12 +2,17 @@ import { useState } from 'react'
 import Practice from './Practice.tsx'
 import SinglePlayer from './SinglePlayer.tsx'
 import { RoomEntry } from './Multiplayer.tsx'
+import { track } from '../lib/analytics.ts'
 
 type Route = 'menu' | 'practice' | 'player' | 'single' | 'multiplayer' | 'timekeeper'
 
 export default function Play() {
   const [route, setRoute] = useState<Route>('menu')
   const back = () => setRoute('menu')
+  const go = (r: Route) => {
+    track('mode_select', { mode: r })
+    setRoute(r)
+  }
 
   switch (route) {
     case 'practice':
@@ -19,9 +24,9 @@ export default function Play() {
     case 'timekeeper':
       return <RoomEntry role="timekeeper" onExit={back} />
     case 'player':
-      return <PlayerChoice onBack={back} onPick={setRoute} />
+      return <PlayerChoice onBack={back} onPick={go} />
     default:
-      return <ModeSelect onPick={setRoute} />
+      return <ModeSelect onPick={go} />
   }
 }
 
