@@ -19,7 +19,7 @@ export default function Clock({
   const seconds = Math.floor((totalCs % 6000) / 100)
   const centis = totalCs % 100
   const pad = (n: number) => String(n).padStart(2, '0')
-  const text = `${pad(minutes)}:${pad(seconds)}.${pad(centis)}`
+  const text = `${pad(minutes)}:${pad(seconds)}:${pad(centis)}`
 
   return (
     <div
@@ -30,7 +30,7 @@ export default function Clock({
     >
       {/* all-segments-on backdrop, like an unlit LCD */}
       <span className="clock__ghost" aria-hidden="true">
-        88:88.88
+        88:88:88
       </span>
       {!blank && <span className="clock__value">{text}</span>}
     </div>
