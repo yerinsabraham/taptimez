@@ -28,8 +28,8 @@ export function fmtTarget(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-/** Within this gap from the target counts as a "perfect" hit. */
-export const PERFECT_MS = 50
+/** Within this gap from the target counts as a "perfect" hit (a true bullseye). */
+export const PERFECT_MS = 20
 
 export function isPerfect(errorMs: number): boolean {
   return errorMs <= PERFECT_MS
@@ -37,9 +37,9 @@ export function isPerfect(errorMs: number): boolean {
 
 /** A short reaction based on how far off the stop was from the target. */
 export function accuracyMessage(errorMs: number): string {
-  if (errorMs <= 50) return '🎯 Perfect!'
-  if (errorMs <= 150) return '🔥 Incredible!'
-  if (errorMs <= 400) return 'Nice!'
-  if (errorMs <= 900) return 'Not bad'
+  if (errorMs <= 20) return '🎯 Perfect!'
+  if (errorMs <= 80) return '🔥 So close!'
+  if (errorMs <= 250) return 'Nice!'
+  if (errorMs <= 700) return 'Not bad'
   return 'Keep practicing'
 }
